@@ -9,9 +9,14 @@ import org.cbioportal.legacy.model.MolecularProfile;
 import org.cbioportal.legacy.model.meta.GenericAssayMeta;
 import org.cbioportal.legacy.web.parameter.GenericAssayDataBinFilter;
 import org.cbioportal.legacy.web.parameter.GenericAssayDataFilter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseGenericAssayRepository implements GenericAssayRepository {
 
   private final ClickhouseGenericAssayMapper mapper;

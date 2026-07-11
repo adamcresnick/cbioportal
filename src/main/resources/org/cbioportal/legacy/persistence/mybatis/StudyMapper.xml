@@ -14,7 +14,7 @@
             ANY_VALUE(cancer_study.public) AS "${prefix}publicStudy",
             ANY_VALUE(cancer_study.pmid) AS "${prefix}pmid",
             ANY_VALUE(cancer_study.citation) AS "${prefix}citation",
-            ANY_VALUE(cancer_study.groups) AS "${prefix}groups",
+            ANY_VALUE(cancer_study.`groups`) AS "${prefix}groups",
             ANY_VALUE(cancer_study.status) AS "${prefix}status",
             ANY_VALUE(cancer_study.import_date) AS "${prefix}importDate",
             ANY_VALUE(reference_genome.name) AS "${prefix}referenceGenome"
@@ -225,12 +225,12 @@
         SELECT
         <include refid="selectSampleResourceCounts"/>
         <include refid="fromResourceSample"/>
-        GROUP BY displayName, description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
+        GROUP BY displayName, rd.description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
         UNION ALL
         SELECT
         <include refid="selectPatientResourceCounts"/>
         <include refid="fromResourcePatient"/>
-        GROUP BY displayName, description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
+        GROUP BY displayName, rd.description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
         ORDER BY resourceId
     </select>
 
@@ -246,7 +246,7 @@
                 </foreach>
             </if>
         </where>
-        GROUP BY displayName, description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
+        GROUP BY displayName, rd.description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
         UNION ALL
         SELECT
         <include refid="selectPatientResourceCounts"/>
@@ -259,7 +259,7 @@
                 </foreach>
             </if>
         </where>
-        GROUP BY displayName, description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
+        GROUP BY displayName, rd.description, resourceType, priority, openByDefault, cancerStudyIdentifier, customMetaData, resourceId
         ORDER BY resourceId
     </select>
 

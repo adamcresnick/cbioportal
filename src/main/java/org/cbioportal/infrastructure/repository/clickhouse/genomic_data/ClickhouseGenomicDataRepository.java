@@ -9,9 +9,14 @@ import org.cbioportal.legacy.model.GenomicDataCount;
 import org.cbioportal.legacy.model.GenomicDataCountItem;
 import org.cbioportal.legacy.web.parameter.GenomicDataBinFilter;
 import org.cbioportal.legacy.web.parameter.GenomicDataFilter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseGenomicDataRepository implements GenomicDataRepository {
 
   private final ClickhouseGenomicDataMapper mapper;

@@ -466,7 +466,8 @@
     </pluginManagement>
 
     <filters>
-      <filter>src/main/resources/application.properties</filter>
+      <!-- Keep clean checkouts buildable; local application.properties remains a runtime override. -->
+      <filter>src/main/resources/application.properties.EXAMPLE</filter>
       <filter>src/main/resources/maven.properties</filter>
     </filters>
 

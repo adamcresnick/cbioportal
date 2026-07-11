@@ -1,0 +1,30 @@
+name: StarRocks backend
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "radiant/**"
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Compile
+        run: mvn -q -DskipTests compile
+      - name: Unit and real StarRocks tests
+        run: mvn -q -Dtest='StarrocksSmokeMapperTest,StarrocksRepositoryFallbackConfigTest,ColumnstoreBackend*' test
+      - name: StarRocks mapper dialect lint
+        run: scripts/lint_starrocks_mappers.sh
+      - name: Formatting
+        run: mvn -q spotless:check

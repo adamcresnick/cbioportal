@@ -9,9 +9,14 @@ import org.cbioportal.domain.clinical_attributes.ClinicalAttribute;
 import org.cbioportal.domain.clinical_attributes.repository.ClinicalAttributesRepository;
 import org.cbioportal.legacy.persistence.enums.DataSource;
 import org.cbioportal.legacy.web.parameter.ClinicalDataType;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseClinicalAttributesRepository implements ClinicalAttributesRepository {
 
   private Map<DataSource, List<ClinicalAttribute>> clinicalAttributesMap =

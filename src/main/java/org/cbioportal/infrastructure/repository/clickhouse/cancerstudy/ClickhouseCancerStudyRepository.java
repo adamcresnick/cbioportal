@@ -6,6 +6,7 @@ import org.cbioportal.domain.cancerstudy.ResourceCount;
 import org.cbioportal.domain.cancerstudy.repository.CancerStudyRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
 import org.cbioportal.shared.SortAndSearchCriteria;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Repository;
 
@@ -14,6 +15,10 @@ import org.springframework.stereotype.Repository;
  * delegates database queries to {@link ClickhouseCancerStudyMapper}.
  */
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseCancerStudyRepository implements CancerStudyRepository {
 
   private final ClickhouseCancerStudyMapper cancerStudyMapper;

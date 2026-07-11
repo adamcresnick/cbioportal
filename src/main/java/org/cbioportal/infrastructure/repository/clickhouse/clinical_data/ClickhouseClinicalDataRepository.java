@@ -8,6 +8,7 @@ import org.cbioportal.domain.clinical_data.ClinicalDataType;
 import org.cbioportal.domain.clinical_data.repository.ClinicalDataRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
 import org.cbioportal.legacy.model.ClinicalDataCountItem;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -21,6 +22,10 @@ import org.springframework.stereotype.Repository;
  * @see ClickhouseClinicalDataMapper
  */
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseClinicalDataRepository implements ClinicalDataRepository {
 
   private final ClickhouseClinicalDataMapper mapper;

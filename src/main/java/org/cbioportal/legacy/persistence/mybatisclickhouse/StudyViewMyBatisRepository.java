@@ -41,6 +41,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 @Deprecated(forRemoval = true)
 @ConditionalOnProperty(name = "clickhouse_mode", havingValue = "test")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class StudyViewMyBatisRepository implements StudyViewRepository {
 
   private final StudyViewMapper studyViewMapper;
