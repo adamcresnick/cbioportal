@@ -7,6 +7,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.Map;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -81,6 +83,21 @@ final class StarrocksTestCluster implements AutoCloseable {
 
   String password() {
     return PASSWORD;
+  }
+
+  void recreateSchema() throws SQLException {
+    executeSqlScript("db-scripts/starrocks/schema.sql");
+    executeSqlScript("db-scripts/starrocks/derived.sql");
+  }
+
+  void loadFixture() throws SQLException {
+    executeSqlScript("starrocks/seed.sql");
+  }
+
+  private void executeSqlScript(String classpathLocation) throws SQLException {
+    try (Connection connection = DriverManager.getConnection(jdbcUrl(), USERNAME, PASSWORD)) {
+      ScriptUtils.executeSqlScript(connection, new ClassPathResource(classpathLocation));
+    }
   }
 
   private Connection openConnection() throws SQLException {
