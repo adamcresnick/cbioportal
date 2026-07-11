@@ -4,6 +4,11 @@ app.name=cbioportal
 # Spring Boot Properties 2.7.14
 spring.mvc.pathmatch.matching-strategy = ANT_PATH_MATCHER
 
+# column-store backend
+# Valid values are "clickhouse" and "starrocks". ClickHouse remains the default
+# for upstream compatibility; select StarRocks explicitly for the StarRocks backend.
+columnstore.backend=clickhouse
+
 # database
 # Note: Legacy spring.datasource.clickhouse.* properties are still supported for backward
 # compatibility but will be automatically migrated to spring.datasource.* properties.
@@ -16,6 +21,14 @@ spring.datasource.url=jdbc:ch://localhost:8443/cbioportal
 spring.datasource.username=dummy
 spring.datasource.password=dummy
 spring.datasource.driver-class-name=com.clickhouse.jdbc.ClickHouseDriver
+
+# StarRocks backend runtime example. StarRocks uses the MySQL wire protocol.
+# Do not use jdbc:ch:// URLs when columnstore.backend=starrocks.
+#columnstore.backend=starrocks
+#spring.datasource.url=jdbc:mysql://<starrocks-fe-host>:9030/<database>
+#spring.datasource.username=<user>
+#spring.datasource.password=<password>
+#spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
 # this should normally be set to false. In some cases you could set this to true (e.g. for testing a feature of a newer release that is not related to the schema change in expected db version above):
 db.suppress_schema_version_mismatch_errors=false

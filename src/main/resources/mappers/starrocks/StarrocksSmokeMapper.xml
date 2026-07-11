@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.cbioportal.infrastructure.repository.starrocks.StarrocksSmokeMapper">
+    <select id="selectOne" resultType="int">
+        SELECT 1
+    </select>
+
+    <select id="currentVersion" resultType="string">
+        SELECT current_version()
+    </select>
+</mapper>

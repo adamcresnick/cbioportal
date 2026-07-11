@@ -14,17 +14,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 @Configuration
-@ConditionalOnProperty(
-    name = "columnstore.backend",
-    havingValue = "clickhouse",
-    matchIfMissing = true)
+@ConditionalOnProperty(name = "columnstore.backend", havingValue = "starrocks")
 @MapperScan(
     value = {
-      "org.cbioportal.infrastructure.repository.clickhouse",
+      "org.cbioportal.infrastructure.repository.starrocks",
       "org.cbioportal.legacy.persistence.mybatis"
     },
     sqlSessionFactoryRef = "sqlSessionFactory")
-public class ClickhouseMyBatisConfig {
+public class StarrocksMyBatisConfig {
 
   @Bean
   ConfigurationCustomizer mybatisConfigurationCustomizer() {
@@ -44,9 +41,9 @@ public class ClickhouseMyBatisConfig {
     SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
     sessionFactory.setDataSource(dataSource);
 
-    // Include both legacy and clickhouse mapper XML locations
+    // Include StarRocks mapper XML and legacy mapper XML, but never ClickHouse mapper XML.
     sessionFactory.addMapperLocations(
-        applicationContext.getResources("classpath:mappers/clickhouse/**/*.xml"));
+        applicationContext.getResources("classpath:mappers/starrocks/**/*.xml"));
     sessionFactory.addMapperLocations(
         applicationContext.getResources(
             "classpath:org/cbioportal/legacy/persistence/mybatis/*.xml"));
