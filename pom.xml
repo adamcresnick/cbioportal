@@ -505,6 +505,7 @@
           <include>migration.sql</include>
           <include>clickhouse/clickhouse.sql</include>
           <include>clickhouse/materialized_views.sql</include>
+          <include>starrocks/*.sql</include>
         </includes>
       </resource>
     </resources>
