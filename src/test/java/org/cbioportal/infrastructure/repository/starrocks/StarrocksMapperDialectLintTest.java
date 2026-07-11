@@ -54,6 +54,20 @@ class StarrocksMapperDialectLintTest {
             "<include refid=\"org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA\"");
   }
 
+  @Test
+  void sharedClinicalEventMapperUsesMysqlProtocolSafeBindings() throws Exception {
+    Path mapper =
+        Path.of(
+            "src/main/resources/org/cbioportal/legacy/persistence/mybatis/ClinicalEventMapper.xml");
+    String xml = Files.readString(mapper);
+
+    assertThat(xml)
+        .doesNotContain("ArrayTypeHandler")
+        .doesNotContain("${sortBy}")
+        .doesNotContain("${direction}")
+        .doesNotContain("combineStudyAndPatientIds");
+  }
+
   private LintResult runLint(Path mapperDir) throws IOException, InterruptedException {
     Process process =
         new ProcessBuilder("bash", "scripts/lint_starrocks_mappers.sh", mapperDir.toString())

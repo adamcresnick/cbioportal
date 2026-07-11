@@ -45,9 +45,9 @@ clinical_event	patient_id	BIGINT	NO	DUPLICATE KEY	clinical_event_id	HASH(clinica
 clinical_event	start_date	BIGINT	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	6
 clinical_event	stop_date	BIGINT	YES	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	6
 clinical_event	event_type	VARCHAR(2048)	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	6
-clinical_event_data	clinical_event_id	BIGINT	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	8
-clinical_event_data	key	VARCHAR(2048)	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	8
-clinical_event_data	value	VARCHAR(65533)	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	8
+clinical_event_data	clinical_event_id	BIGINT	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	9
+clinical_event_data	key	VARCHAR(2048)	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	9
+clinical_event_data	value	VARCHAR(65533)	NO	DUPLICATE KEY	clinical_event_id	HASH(clinical_event_id)/1	9
 clinical_patient	internal_id	BIGINT	NO	DUPLICATE KEY	internal_id	HASH(internal_id)/1	17
 clinical_patient	attr_id	VARCHAR(2048)	NO	DUPLICATE KEY	internal_id	HASH(internal_id)/1	17
 clinical_patient	attr_value	VARCHAR(65533)	NO	DUPLICATE KEY	internal_id	HASH(internal_id)/1	17
