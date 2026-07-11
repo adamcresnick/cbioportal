@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.cbioportal.infrastructure.repository.starrocks.generic_assay.StarrocksGenericAssayMapper">
+
+    <select id="getGenericAssayProfiles" resultType="org.cbioportal.legacy.model.MolecularProfile">
+        SELECT gp.genetic_profile_id AS molecularProfileId,
+               gp.stable_id AS stableId,
+               gp.cancer_study_id AS cancerStudyId,
+               cs.cancer_study_identifier AS cancerStudyIdentifier,
+               gp.genetic_alteration_type AS molecularAlterationType,
+               gp.datatype AS datatype,
+               gp.name AS name,
+               gp.description AS description,
+               gp.show_profile_in_analysis_tab AS showProfileInAnalysisTab,
+               gp.pivot_threshold AS pivotThreshold,
+               gp.sort_order AS sortOrder,
+               gp.generic_assay_type AS genericAssayType,
+               gp.patient_level AS patientLevel
+        FROM genetic_profile gp
+        INNER JOIN cancer_study cs ON gp.cancer_study_id = cs.cancer_study_id
+        INNER JOIN reference_genome rg ON cs.reference_genome_id = rg.reference_genome_id
+        WHERE gp.genetic_alteration_type = 'GENERIC_ASSAY'
+        ORDER BY gp.stable_id
+    </select>
+
+    <select id="getFilteredMolecularProfilesByAlterationType" resultType="org.cbioportal.legacy.model.MolecularProfile">
+        SELECT gp.stable_id AS stableId,
+               gp.datatype AS datatype,
+               cs.cancer_study_identifier AS cancerStudyIdentifier
+        FROM genetic_profile gp
+        INNER JOIN cancer_study cs ON gp.cancer_study_id = cs.cancer_study_id
+        WHERE gp.genetic_alteration_type = #{alterationType}
+          AND gp.datatype != 'CONTINUOUS'
+          AND cs.cancer_study_identifier IN (
+              SELECT DISTINCT sd.cancer_study_identifier
+              FROM sample_derived sd
+              WHERE <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingSampleId"/>
+          )
+        ORDER BY gp.stable_id
+    </select>
+
+</mapper>

@@ -304,11 +304,11 @@ type_of_cancer	parent	VARCHAR(2048)	YES	DUPLICATE KEY	type_of_cancer_id	HASH(typ
 users	email	VARCHAR(255)	NO	DUPLICATE KEY	email	HASH(email)/1	0
 users	name	VARCHAR(2048)	NO	DUPLICATE KEY	email	HASH(email)/1	0
 users	enabled	INT	NO	DUPLICATE KEY	email	HASH(email)/1	0
-sample_to_gene_panel_derived	sample_unique_id	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	8
-sample_to_gene_panel_derived	alteration_type	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	8
-sample_to_gene_panel_derived	gene_panel_id	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	8
-sample_to_gene_panel_derived	cancer_study_identifier	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	8
-sample_to_gene_panel_derived	genetic_profile_id	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	8
+sample_to_gene_panel_derived	sample_unique_id	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	24
+sample_to_gene_panel_derived	alteration_type	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	24
+sample_to_gene_panel_derived	gene_panel_id	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	24
+sample_to_gene_panel_derived	cancer_study_identifier	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	24
+sample_to_gene_panel_derived	genetic_profile_id	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	24
 gene_panel_to_gene_derived	gene_panel_id	VARCHAR(255)	NO	DUPLICATE KEY	gene_panel_id	HASH(gene_panel_id)/1	5
 gene_panel_to_gene_derived	gene	VARCHAR(2048)	NO	DUPLICATE KEY	gene_panel_id	HASH(gene_panel_id)/1	5
 sample_derived	sample_unique_id	VARCHAR(255)	NO	DUPLICATE KEY	sample_unique_id	HASH(sample_unique_id)/1	8

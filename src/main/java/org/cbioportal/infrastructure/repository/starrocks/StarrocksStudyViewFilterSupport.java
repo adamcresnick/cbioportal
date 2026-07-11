@@ -14,14 +14,10 @@ public final class StarrocksStudyViewFilterSupport {
 
   public static void requireImplementedFilterFamilies(StudyViewFilterContext context) {
     List<String> unsupported = new ArrayList<>();
-    addIfPresent(unsupported, "geneFilters", context.geneFilters());
-    addIfPresent(unsupported, "structuralVariantFilters", context.structuralVariantFilters());
-    addIfPresent(unsupported, "genomicDataFilters", context.genomicDataFilters());
     addIfPresent(unsupported, "genericAssayDataFilters", context.genericAssayDataFilters());
     addIfPresent(
         unsupported, "genericAssaySelectionFilters", context.genericAssaySelectionFilters());
     addIfPresent(unsupported, "customDataFilters", context.customDataFilters());
-    addIfPresent(unsupported, "mutationDataFilters", context.mutationDataFilters());
     addIfPresent(unsupported, "customSampleIdentifiers", context.customSampleIdentifiers());
     addIfPresent(unsupported, "sampleTreatmentGroupFilters", context.sampleTreatmentGroupFilters());
     addIfPresent(
@@ -30,9 +26,6 @@ public final class StarrocksStudyViewFilterSupport {
         unsupported, "patientTreatmentGroupFilters", context.patientTreatmentGroupFilters());
     addIfPresent(
         unsupported, "patientTreatmentTargetFilters", context.patientTreatmentTargetFilters());
-    if (context.alterationFilter() != null) {
-      unsupported.add("alterationFilter");
-    }
     addIfPresent(
         unsupported,
         "categorizedGenericAssayDataCountFilter",

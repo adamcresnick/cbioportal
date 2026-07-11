@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
+import org.cbioportal.legacy.persistence.helper.AlterationFilterHelper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -80,6 +82,49 @@ class StarrocksMapperDialectLintTest {
         .doesNotContain("${direction}")
         .doesNotContain("'${geneFilterQuery")
         .doesNotContain("CONCAT(sampleId");
+  }
+
+  @Test
+  void sharedStructuralVariantMapperUsesSafePortableBindings() throws Exception {
+    String xml =
+        Files.readString(
+            Path.of(
+                "src/main/resources/org/cbioportal/legacy/persistence/mybatis/StructuralVariantMapper.xml"));
+
+    assertThat(xml)
+        .doesNotContain("ArrayTypeHandler")
+        .doesNotContain("${geneFilterQuery")
+        .doesNotContain("listToArray");
+  }
+
+  @Test
+  void alterationMapperOnlyReferencesExistingFilterHelperMethods() throws Exception {
+    String xml =
+        Files.readString(
+            Path.of(
+                "src/main/resources/mappers/starrocks/alteration/StarrocksAlterationMapper.xml"));
+    Pattern pattern = Pattern.compile("alterationFilterHelper[.]([A-Za-z0-9_]+)[(]");
+
+    for (var result : pattern.matcher(xml).results().toList()) {
+      assertThat(AlterationFilterHelper.class.getMethod(result.group(1)))
+          .as(result.group(1))
+          .isNotNull();
+    }
+    assertThat(xml)
+        .doesNotContain("sample_derived sample")
+        .doesNotContain("sample_to_gene_panel_derived panel");
+  }
+
+  @Test
+  void genomicMappersAvoidReservedAliases() throws Exception {
+    String xml =
+        Files.readString(
+            Path.of(
+                "src/main/resources/mappers/starrocks/genomic_data/StarrocksGenomicDataMapper.xml"));
+
+    assertThat(xml)
+        .doesNotContain("sample_derived sample")
+        .doesNotContain("sample_to_gene_panel_derived panel");
   }
 
   private LintResult runLint(Path mapperDir) throws IOException, InterruptedException {
