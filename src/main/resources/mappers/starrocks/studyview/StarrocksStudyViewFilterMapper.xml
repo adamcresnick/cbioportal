@@ -51,6 +51,242 @@
                 </if>
             </foreach>
         </if>
+        <if test="studyViewFilterContext.geneFilters != null and !studyViewFilterContext.geneFilters.isEmpty()">
+            <foreach item="geneFilter" collection="studyViewFilterContext.geneFilters">
+                <foreach item="geneQueryGroup" collection="geneFilter.geneQueries">
+                    AND EXISTS (
+                        SELECT 1
+                        FROM genomic_event_derived gene_event
+                        WHERE gene_event.sample_unique_id = base_sample.sample_unique_id
+                          AND gene_event.genetic_profile_stable_id IN
+                          <foreach item="profileId" collection="geneFilter.molecularProfileIds" open="(" separator="," close=")">
+                              #{profileId}
+                          </foreach>
+                          AND
+                          <foreach item="geneQuery" collection="geneQueryGroup" open="(" separator=" OR " close=")">
+                              (gene_event.hugo_gene_symbol = #{geneQuery.hugoGeneSymbol}
+                              <if test="geneQuery.alterations != null and !geneQuery.alterations.isEmpty()">
+                                  AND gene_event.cna_alteration IN
+                                  <foreach item="alteration" collection="geneQuery.alterations" open="(" separator="," close=")">
+                                      #{alteration.code}
+                                  </foreach>
+                              </if>)
+                          </foreach>
+                    )
+                </foreach>
+            </foreach>
+        </if>
+        <if test="studyViewFilterContext.structuralVariantFilters != null and !studyViewFilterContext.structuralVariantFilters.isEmpty()">
+            <foreach item="structuralVariantFilter" collection="studyViewFilterContext.structuralVariantFilters">
+                <foreach item="structuralVariantQueryGroup" collection="structuralVariantFilter.structVarQueries">
+                    AND EXISTS (
+                        SELECT 1
+                        FROM structural_variant sv_filter
+                        INNER JOIN genetic_profile sv_profile
+                            ON sv_filter.genetic_profile_id = sv_profile.genetic_profile_id
+                        LEFT JOIN alteration_driver_annotation sv_driver
+                            ON sv_filter.genetic_profile_id = sv_driver.genetic_profile_id
+                            AND sv_filter.sample_id = sv_driver.sample_id
+                            AND sv_filter.internal_id = sv_driver.alteration_event_id
+                        WHERE sv_filter.sample_id = base_sample.internal_id
+                          AND sv_profile.stable_id IN
+                          <foreach item="profileId" collection="structuralVariantFilter.molecularProfileIds" open="(" separator="," close=")">
+                              #{profileId}
+                          </foreach>
+                          AND
+                          <foreach item="svQuery" collection="structuralVariantQueryGroup" open="(" separator=" OR " close=")">
+                              (
+                                  <choose>
+                                      <when test="svQuery.gene1Query.specialValue == @org.cbioportal.legacy.model.StructuralVariantSpecialValue@NO_GENE">
+                                          sv_filter.site1_entrez_gene_id IS NULL
+                                      </when>
+                                      <when test="svQuery.gene1Query.specialValue == @org.cbioportal.legacy.model.StructuralVariantSpecialValue@ANY_GENE">
+                                          1 = 1
+                                      </when>
+                                      <otherwise>
+                                          sv_filter.site1_entrez_gene_id = #{svQuery.gene1Query.entrezId}
+                                      </otherwise>
+                                  </choose>
+                                  AND
+                                  <choose>
+                                      <when test="svQuery.gene2Query.specialValue == @org.cbioportal.legacy.model.StructuralVariantSpecialValue@NO_GENE">
+                                          sv_filter.site2_entrez_gene_id IS NULL
+                                      </when>
+                                      <when test="svQuery.gene2Query.specialValue == @org.cbioportal.legacy.model.StructuralVariantSpecialValue@ANY_GENE">
+                                          1 = 1
+                                      </when>
+                                      <otherwise>
+                                          sv_filter.site2_entrez_gene_id = #{svQuery.gene2Query.entrezId}
+                                      </otherwise>
+                                  </choose>
+                                  <if test="!(svQuery.includeGermline and svQuery.includeSomatic and svQuery.includeUnknownStatus)">
+                                      AND
+                                      <trim prefix="(" suffix=")" prefixOverrides="OR">
+                                          <if test="svQuery.includeGermline">
+                                              OR LOWER(sv_filter.sv_status) = 'germline'
+                                          </if>
+                                          <if test="svQuery.includeSomatic">
+                                              OR LOWER(sv_filter.sv_status) = 'somatic'
+                                          </if>
+                                          <if test="svQuery.includeUnknownStatus">
+                                              OR LOWER(sv_filter.sv_status) NOT IN ('somatic', 'germline')
+                                          </if>
+                                          <if test="!svQuery.includeGermline and !svQuery.includeSomatic and !svQuery.includeUnknownStatus">
+                                              OR 1 = 0
+                                          </if>
+                                      </trim>
+                                  </if>
+                                  <if test="!(svQuery.includeDriver and svQuery.includeVUS and svQuery.includeUnknownOncogenicity)">
+                                      AND
+                                      <trim prefix="(" suffix=")" prefixOverrides="OR">
+                                          <if test="svQuery.includeDriver">
+                                              OR LOWER(sv_driver.driver_filter) = 'putative_driver'
+                                          </if>
+                                          <if test="svQuery.includeVUS">
+                                              OR LOWER(sv_driver.driver_filter) = 'putative_passenger'
+                                          </if>
+                                          <if test="svQuery.includeUnknownOncogenicity">
+                                              OR sv_driver.driver_filter IS NULL
+                                              OR LOWER(sv_driver.driver_filter) IN ('unknown', 'na', '')
+                                          </if>
+                                          <if test="!svQuery.includeDriver and !svQuery.includeVUS and !svQuery.includeUnknownOncogenicity">
+                                              OR 1 = 0
+                                          </if>
+                                      </trim>
+                                  </if>
+                                  <bind name="allSvTiers" value="svQuery.selectedTiers != null and svQuery.selectedTiers.hasAll() and svQuery.includeUnknownTier"/>
+                                  <bind name="allExceptUnknownSvTiers" value="svQuery.selectedTiers != null and svQuery.selectedTiers.hasAll() and !svQuery.includeUnknownTier"/>
+                                  <choose>
+                                      <when test="allExceptUnknownSvTiers">
+                                          AND sv_driver.driver_tiers_filter IS NOT NULL
+                                          AND LOWER(sv_driver.driver_tiers_filter) NOT IN ('unknown', 'na', '')
+                                      </when>
+                                      <when test="!allSvTiers">
+                                          AND
+                                          <trim prefix="(" suffix=")" prefixOverrides="OR">
+                                              <if test="svQuery.selectedTiers != null and svQuery.selectedTiers.hasValues()">
+                                                  OR sv_driver.driver_tiers_filter IN
+                                                  <foreach item="tier" collection="svQuery.selectedTiers" open="(" separator="," close=")">
+                                                      #{tier}
+                                                  </foreach>
+                                              </if>
+                                              <if test="svQuery.includeUnknownTier">
+                                                  OR sv_driver.driver_tiers_filter IS NULL
+                                                  OR LOWER(sv_driver.driver_tiers_filter) IN ('unknown', 'na', '')
+                                              </if>
+                                              <if test="(svQuery.selectedTiers == null or svQuery.selectedTiers.hasNone()) and !svQuery.includeUnknownTier">
+                                                  OR 1 = 0
+                                              </if>
+                                          </trim>
+                                      </when>
+                                  </choose>
+                              )
+                          </foreach>
+                    )
+                </foreach>
+            </foreach>
+        </if>
+        <if test="studyViewFilterContext.mutationDataFilters != null and !studyViewFilterContext.mutationDataFilters.isEmpty()">
+            <foreach item="mutationFilter" collection="studyViewFilterContext.mutationDataFilters">
+                <choose>
+                    <when test="mutationFilter.categorization == @org.cbioportal.legacy.web.parameter.MutationOption@MUTATED">
+                        AND
+                        <foreach item="filterValue" collection="mutationFilter.values[0]" open="(" separator=" OR " close=")">
+                            <choose>
+                                <when test="filterValue.value == 'MUTATED'">
+                                    EXISTS (
+                                        SELECT 1 FROM genomic_event_derived mutation_event_filter
+                                        WHERE mutation_event_filter.sample_unique_id = base_sample.sample_unique_id
+                                          AND mutation_event_filter.variant_type = 'mutation'
+                                          AND mutation_event_filter.hugo_gene_symbol = #{mutationFilter.hugoGeneSymbol}
+                                    )
+                                </when>
+                                <when test="filterValue.value == 'NOT_MUTATED'">
+                                    <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isProfiledForMutationGene"/>
+                                    AND NOT EXISTS (
+                                        SELECT 1 FROM genomic_event_derived mutation_event_filter
+                                        WHERE mutation_event_filter.sample_unique_id = base_sample.sample_unique_id
+                                          AND mutation_event_filter.variant_type = 'mutation'
+                                          AND mutation_event_filter.hugo_gene_symbol = #{mutationFilter.hugoGeneSymbol}
+                                    )
+                                </when>
+                                <when test="filterValue.value == 'NOT_PROFILED'">
+                                    NOT <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isProfiledForMutationGene"/>
+                                </when>
+                                <otherwise>1 = 0</otherwise>
+                            </choose>
+                        </foreach>
+                    </when>
+                    <when test="mutationFilter.categorization == @org.cbioportal.legacy.web.parameter.MutationOption@MUTATION_TYPE">
+                        <foreach item="mutationTypeGroup" collection="mutationFilter.values">
+                            AND EXISTS (
+                                SELECT 1 FROM genomic_event_derived mutation_type_filter
+                                WHERE mutation_type_filter.sample_unique_id = base_sample.sample_unique_id
+                                  AND mutation_type_filter.variant_type = 'mutation'
+                                  AND mutation_type_filter.hugo_gene_symbol = #{mutationFilter.hugoGeneSymbol}
+                                  AND mutation_type_filter.mutation_type IN
+                                  <foreach item="filterValue" collection="mutationTypeGroup" open="(" separator="," close=")">
+                                      #{filterValue.value}
+                                  </foreach>
+                            )
+                        </foreach>
+                    </when>
+                </choose>
+            </foreach>
+        </if>
+        <if test="studyViewFilterContext.genomicDataFilters != null and !studyViewFilterContext.genomicDataFilters.isEmpty()">
+            <foreach item="genomicFilter" collection="studyViewFilterContext.genomicDataFilters">
+                AND
+                <foreach item="filterValue" collection="genomicFilter.values" open="(" separator=" OR " close=")">
+                    <choose>
+                        <when test="genomicFilter.profileType == 'cna' or genomicFilter.profileType == 'gistic'">
+                            <choose>
+                                <when test="filterValue.value == 'NA'">
+                                    NOT EXISTS (
+                                        SELECT 1 FROM genetic_alteration_derived cna_filter
+                                        WHERE cna_filter.sample_unique_id = base_sample.sample_unique_id
+                                          AND cna_filter.profile_type = #{genomicFilter.profileType}
+                                          AND cna_filter.hugo_gene_symbol = #{genomicFilter.hugoGeneSymbol}
+                                          AND NOT (<include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA"><property name="attribute_value" value="cna_filter.alteration_value"/></include>)
+                                    )
+                                </when>
+                                <otherwise>
+                                    EXISTS (
+                                        SELECT 1 FROM genetic_alteration_derived cna_filter
+                                        WHERE cna_filter.sample_unique_id = base_sample.sample_unique_id
+                                          AND cna_filter.profile_type = #{genomicFilter.profileType}
+                                          AND cna_filter.hugo_gene_symbol = #{genomicFilter.hugoGeneSymbol}
+                                          AND cna_filter.alteration_value = #{filterValue.value}
+                                    )
+                                </otherwise>
+                            </choose>
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="filterValue.value == 'NA'">
+                                    NOT EXISTS (
+                                        SELECT 1 FROM genetic_alteration_derived numerical_genomic_filter
+                                        WHERE numerical_genomic_filter.sample_unique_id = base_sample.sample_unique_id
+                                          AND numerical_genomic_filter.profile_type = #{genomicFilter.profileType}
+                                          AND numerical_genomic_filter.hugo_gene_symbol = #{genomicFilter.hugoGeneSymbol}
+                                          AND NOT (<include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA"><property name="attribute_value" value="numerical_genomic_filter.alteration_value"/></include>)
+                                    )
+                                </when>
+                                <otherwise>
+                                    EXISTS (
+                                        SELECT 1 FROM genetic_alteration_derived numerical_genomic_filter
+                                        WHERE numerical_genomic_filter.sample_unique_id = base_sample.sample_unique_id
+                                          AND numerical_genomic_filter.profile_type = #{genomicFilter.profileType}
+                                          AND numerical_genomic_filter.hugo_gene_symbol = #{genomicFilter.hugoGeneSymbol}
+                                          <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.genomicDataValueMatches"/>
+                                    )
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                </foreach>
+            </foreach>
+        </if>
         <if test="studyViewFilterContext.clinicalDataFilters != null and !studyViewFilterContext.clinicalDataFilters.isEmpty()">
             <foreach item="clinicalDataFilter" collection="studyViewFilterContext.clinicalDataFilters">
                 AND (
@@ -161,6 +397,23 @@
         </if>
     </sql>
 
+    <sql id="isProfiledForMutationGene">
+        EXISTS (
+            SELECT 1
+            FROM sample_to_gene_panel_derived mutation_panel
+            WHERE mutation_panel.sample_unique_id = base_sample.sample_unique_id
+              AND mutation_panel.alteration_type = 'MUTATION_EXTENDED'
+              AND (
+                  mutation_panel.gene_panel_id = 'WES'
+                  OR EXISTS (
+                      SELECT 1 FROM gene_panel_to_gene_derived mutation_panel_gene
+                      WHERE mutation_panel_gene.gene_panel_id = mutation_panel.gene_panel_id
+                        AND mutation_panel_gene.gene = #{mutationFilter.hugoGeneSymbol}
+                  )
+              )
+        )
+    </sql>
+
     <sql id="applyStudyViewFilterUsingSampleId">
         sample_unique_id IN (
             <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleUniqueIdsFromStudyViewFilter"/>
@@ -198,6 +451,26 @@
                 </if>
                 <if test="filterValue.end != null and filterValue.start != filterValue.end">
                     AND CAST(REGEXP_REPLACE(${clinical_alias}.attribute_value, '^[&lt;>]=?', '') AS DOUBLE) &lt;= #{filterValue.end}
+                </if>
+            </when>
+        </choose>
+    </sql>
+
+    <sql id="genomicDataValueMatches">
+        <choose>
+            <when test="filterValue.value != null">
+                AND LOWER(TRIM(numerical_genomic_filter.alteration_value)) = LOWER(TRIM(#{filterValue.value}))
+            </when>
+            <when test="filterValue.start != null or filterValue.end != null">
+                AND numerical_genomic_filter.alteration_value REGEXP '^[&lt;>]?=?[-+]?[0-9]*[.]?[0-9]+$'
+                <if test="filterValue.start != null and filterValue.start == filterValue.end">
+                    AND ABS(CAST(REGEXP_REPLACE(numerical_genomic_filter.alteration_value, '^[&lt;>]=?', '') AS DOUBLE) - #{filterValue.start}) &lt; 0.00000000001
+                </if>
+                <if test="filterValue.start != null and filterValue.start != filterValue.end">
+                    AND CAST(REGEXP_REPLACE(numerical_genomic_filter.alteration_value, '^[&lt;>]=?', '') AS DOUBLE) &gt; #{filterValue.start}
+                </if>
+                <if test="filterValue.end != null and filterValue.start != filterValue.end">
+                    AND CAST(REGEXP_REPLACE(numerical_genomic_filter.alteration_value, '^[&lt;>]=?', '') AS DOUBLE) &lt;= #{filterValue.end}
                 </if>
             </when>
         </choose>

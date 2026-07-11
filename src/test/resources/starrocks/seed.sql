@@ -227,7 +227,23 @@ INSERT INTO sample_to_gene_panel_derived VALUES
   ('sr_study_b_SB1','MUTATION_EXTENDED','TEST_PANEL','sr_study_b','sr_study_b_mutations'),
   ('sr_study_b_SB2','MUTATION_EXTENDED','TEST_PANEL','sr_study_b','sr_study_b_mutations'),
   ('sr_study_b_SB3','MUTATION_EXTENDED','WES','sr_study_b','sr_study_b_mutations'),
-  ('sr_study_b_SB4','MUTATION_EXTENDED','TEST_PANEL','sr_study_b','sr_study_b_mutations');
+  ('sr_study_b_SB4','MUTATION_EXTENDED','TEST_PANEL','sr_study_b','sr_study_b_mutations'),
+  ('sr_study_a_SA1','COPY_NUMBER_ALTERATION','TEST_PANEL','sr_study_a','sr_study_a_gistic'),
+  ('sr_study_a_SA2','COPY_NUMBER_ALTERATION','TEST_PANEL','sr_study_a','sr_study_a_gistic'),
+  ('sr_study_a_SA3','COPY_NUMBER_ALTERATION','WES','sr_study_a','sr_study_a_gistic'),
+  ('sr_study_a_SA4','COPY_NUMBER_ALTERATION','TEST_PANEL','sr_study_a','sr_study_a_gistic'),
+  ('sr_study_b_SB1','COPY_NUMBER_ALTERATION','TEST_PANEL','sr_study_b','sr_study_b_gistic'),
+  ('sr_study_b_SB2','COPY_NUMBER_ALTERATION','TEST_PANEL','sr_study_b','sr_study_b_gistic'),
+  ('sr_study_b_SB3','COPY_NUMBER_ALTERATION','WES','sr_study_b','sr_study_b_gistic'),
+  ('sr_study_b_SB4','COPY_NUMBER_ALTERATION','TEST_PANEL','sr_study_b','sr_study_b_gistic'),
+  ('sr_study_a_SA1','STRUCTURAL_VARIANT','TEST_PANEL','sr_study_a','sr_study_a_structural_variants'),
+  ('sr_study_a_SA2','STRUCTURAL_VARIANT','TEST_PANEL','sr_study_a','sr_study_a_structural_variants'),
+  ('sr_study_a_SA3','STRUCTURAL_VARIANT','WES','sr_study_a','sr_study_a_structural_variants'),
+  ('sr_study_a_SA4','STRUCTURAL_VARIANT','TEST_PANEL','sr_study_a','sr_study_a_structural_variants'),
+  ('sr_study_b_SB1','STRUCTURAL_VARIANT','TEST_PANEL','sr_study_b','sr_study_b_structural_variants'),
+  ('sr_study_b_SB2','STRUCTURAL_VARIANT','TEST_PANEL','sr_study_b','sr_study_b_structural_variants'),
+  ('sr_study_b_SB3','STRUCTURAL_VARIANT','WES','sr_study_b','sr_study_b_structural_variants'),
+  ('sr_study_b_SB4','STRUCTURAL_VARIANT','TEST_PANEL','sr_study_b','sr_study_b_structural_variants');
 
 INSERT INTO gene_panel_to_gene_derived VALUES
   ('TEST_PANEL','TP53'),('TEST_PANEL','EGFR'),('WES','TP53'),('WES','EGFR'),('WES','BRAF');

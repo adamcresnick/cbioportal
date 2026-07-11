@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.cbioportal.infrastructure.repository.starrocks.alteration.StarrocksAlterationMapper">
+
+    <select id="getMutatedGenes" resultType="org.cbioportal.legacy.model.AlterationCountByGene">
+        SELECT hugo_gene_symbol AS hugoGeneSymbol,
+               entrez_gene_id AS entrezGeneId,
+               COUNT(DISTINCT sample_unique_id) AS numberOfAlteredCases,
+               COUNT(DISTINCT CASE WHEN off_panel = 0 THEN sample_unique_id END) AS numberOfAlteredCasesOnPanel,
+               COUNT(*) AS totalCount
+        FROM genomic_event_derived
+        <where>
+            variant_type = 'mutation'
+            AND mutation_status != 'UNCALLED'
+            AND <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingSampleId"/>
+            <if test="alterationFilterHelper.shouldApplyMutationAlterationFilter()">
+                <include refid="mutationAlterationFilter"/>
+            </if>
+        </where>
+        GROUP BY entrez_gene_id, hugo_gene_symbol
+        ORDER BY totalCount DESC, hugo_gene_symbol ASC
+    </select>
+
+    <select id="getCnaGenes" resultType="org.cbioportal.legacy.model.CopyNumberCountByGene">
+        SELECT hugo_gene_symbol AS hugoGeneSymbol,
+               entrez_gene_id AS entrezGeneId,
+               cna_alteration AS alteration,
+               cna_cytoband AS cytoband,
+               COUNT(DISTINCT sample_unique_id) AS numberOfAlteredCases,
+               COUNT(DISTINCT CASE WHEN off_panel = 0 THEN sample_unique_id END) AS numberOfAlteredCasesOnPanel,
+               COUNT(*) AS totalCount
+        FROM genomic_event_derived
+        <where>
+            variant_type = 'cna'
+            AND <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingSampleId"/>
+            <if test="alterationFilterHelper.shouldApplyCnaAlterationFilter()">
+                <include refid="cnaAlterationFilter"/>
+            </if>
+        </where>
+        GROUP BY entrez_gene_id, hugo_gene_symbol, cna_alteration, cna_cytoband
+        ORDER BY totalCount DESC, hugo_gene_symbol ASC, cna_alteration ASC
+    </select>
+
+    <select id="getStructuralVariantGenes" resultType="org.cbioportal.legacy.model.AlterationCountByGene">
+        SELECT hugo_gene_symbol AS hugoGeneSymbol,
+               entrez_gene_id AS entrezGeneId,
+               COUNT(DISTINCT sample_unique_id) AS numberOfAlteredCases,
+               COUNT(DISTINCT CASE WHEN off_panel = 0 THEN sample_unique_id END) AS numberOfAlteredCasesOnPanel,
+               COUNT(*) AS totalCount
+        FROM genomic_event_derived
+        <where>
+            variant_type = 'structural_variant'
+            AND <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingSampleId"/>
+            <include refid="whereCustomAnnotations"/>
+            <include refid="whereMutationStatus"/>
+        </where>
+        GROUP BY entrez_gene_id, hugo_gene_symbol
+        ORDER BY totalCount DESC, hugo_gene_symbol ASC
+    </select>
+
+    <select id="getTotalProfiledCounts" resultType="org.cbioportal.legacy.model.AlterationCountByGene">
+        SELECT gptg.gene AS hugoGeneSymbol,
+               COUNT(*) AS numberOfProfiledCases
+        FROM sample_to_gene_panel_derived stgp
+        INNER JOIN gene_panel_to_gene_derived gptg ON stgp.gene_panel_id = gptg.gene_panel_id
+        <where>
+            stgp.alteration_type = #{alterationType}
+            AND stgp.gene_panel_id != 'WES'
+            <if test="molecularProfiles != null and !molecularProfiles.isEmpty()">
+                AND stgp.genetic_profile_id IN
+                <foreach item="profile" collection="molecularProfiles" open="(" separator="," close=")">
+                    #{profile.stableId}
+                </foreach>
+            </if>
+            AND <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingSampleId"/>
+        </where>
+        GROUP BY gptg.gene
+        ORDER BY gptg.gene
+    </select>
+
+    <select id="getMatchingGenePanelIds" resultType="org.cbioportal.legacy.model.GenePanelToGene">
+        SELECT gptg.gene AS hugoGeneSymbol,
+               gptg.gene_panel_id AS genePanelId
+        FROM gene_panel_to_gene_derived gptg
+        WHERE gptg.gene_panel_id IN (
+            SELECT DISTINCT stgp.gene_panel_id
+            FROM sample_to_gene_panel_derived stgp
+            <where>
+                stgp.alteration_type = #{alterationType}
+                AND <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingSampleId"/>
+            </where>
+        )
+        GROUP BY gptg.gene, gptg.gene_panel_id
+        ORDER BY gptg.gene, gptg.gene_panel_id
+    </select>
+
+    <select id="getSampleProfileCountWithoutPanelData" resultType="int">
+        SELECT COUNT(DISTINCT sample_unique_id)
+        FROM sample_to_gene_panel_derived
+        <where>
+            alteration_type = #{alterationType}
+            AND gene_panel_id = 'WES'
+            AND <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingSampleId"/>
+        </where>
+    </select>
+
+    <select id="getGenePanelGenes" resultType="org.cbioportal.legacy.model.GenePanelToGene">
+        SELECT panel_gene.gene_panel_id AS genePanelId,
+               panel_gene.gene AS hugoGeneSymbol,
+               gene.entrez_gene_id AS entrezGeneId
+        FROM gene_panel_to_gene_derived panel_gene
+        INNER JOIN gene ON gene.hugo_gene_symbol = panel_gene.gene
+        ORDER BY panel_gene.gene_panel_id, panel_gene.gene
+    </select>
+
+    <select id="getSampleToGenePanels" resultType="org.cbioportal.legacy.model.EntityToPanel">
+        SELECT DISTINCT sd.sample_unique_id AS entityUniqueId,
+                        sgp.gene_panel_id AS genePanelId,
+                        sgp.genetic_profile_id AS geneticProfileId
+        FROM sample_to_gene_panel_derived sgp
+        INNER JOIN sample_derived sd ON sgp.sample_unique_id = sd.sample_unique_id
+        WHERE sd.sample_unique_id IN
+        <foreach item="entityId" collection="entityIds" open="(" separator="," close=")">
+            #{entityId}
+        </foreach>
+        AND sgp.genetic_profile_id IN
+        <foreach item="profileId" collection="profileIds" open="(" separator="," close=")">
+            #{profileId}
+        </foreach>
+        ORDER BY entityUniqueId, geneticProfileId
+    </select>
+
+    <select id="getPatientToGenePanels" resultType="org.cbioportal.legacy.model.EntityToPanel">
+        SELECT DISTINCT sd.patient_unique_id AS entityUniqueId,
+                        sgp.gene_panel_id AS genePanelId,
+                        sgp.genetic_profile_id AS geneticProfileId
+        FROM sample_to_gene_panel_derived sgp
+        INNER JOIN sample_derived sd ON sgp.sample_unique_id = sd.sample_unique_id
+        WHERE sd.patient_unique_id IN
+        <foreach item="entityId" collection="entityIds" open="(" separator="," close=")">
+            #{entityId}
+        </foreach>
+        AND sgp.genetic_profile_id IN
+        <foreach item="profileId" collection="profileIds" open="(" separator="," close=")">
+            #{profileId}
+        </foreach>
+        ORDER BY entityUniqueId, geneticProfileId
+    </select>
+
+    <sql id="getAlterationCountByGeneGiven">
+        SELECT hugo_gene_symbol AS hugoGeneSymbol,
+               COALESCE(entrez_gene_id, 0) AS entrezGeneId,
+               COUNT(DISTINCT ${unique_id}) AS numberOfAlteredCases,
+               COUNT(DISTINCT CASE WHEN off_panel = 0 THEN ${unique_id} END) AS numberOfAlteredCasesOnPanel
+        FROM genomic_event_derived
+        <where>
+            mutation_status != 'UNCALLED'
+            AND genetic_profile_stable_id IN
+            <foreach item="profile" collection="molecularProfiles" open="(" separator="," close=")">
+                #{profile}
+            </foreach>
+            AND ${unique_id} IN
+            <foreach item="entity" collection="entities" open="(" separator="," close=")">
+                #{entity}
+            </foreach>
+            <if test="alterationFilterHelper.shouldApplyMutationAlterationFilter()">
+                <include refid="mutationAlterationFilter"/>
+            </if>
+            <if test="alterationFilterHelper.shouldApplyCnaAlterationFilter()">
+                <include refid="cnaAlterationFilter"/>
+            </if>
+            <if test="alterationFilterHelper.disableStructuralVariants()">
+                AND variant_type != 'structural_variant'
+            </if>
+        </where>
+        GROUP BY entrez_gene_id, hugo_gene_symbol
+        ORDER BY numberOfAlteredCases DESC, hugo_gene_symbol ASC
+    </sql>
+
+    <select id="getAlterationCountByGeneGivenSamplesAndMolecularProfiles" resultType="org.cbioportal.legacy.model.AlterationCountByGene">
+        <include refid="getAlterationCountByGeneGiven">
+            <property name="unique_id" value="sample_unique_id"/>
+        </include>
+    </select>
+
+    <select id="getAlterationCountByGeneGivenPatientsAndMolecularProfiles" resultType="org.cbioportal.legacy.model.AlterationCountByGene">
+        <include refid="getAlterationCountByGeneGiven">
+            <property name="unique_id" value="patient_unique_id"/>
+        </include>
+    </select>
+
+    <select id="getAllMolecularProfiles" resultType="org.cbioportal.legacy.model.MolecularProfile">
+        SELECT profile.genetic_profile_id AS molecularProfileId,
+               profile.stable_id AS stableId,
+               profile.cancer_study_id AS cancerStudyId,
+               study.cancer_study_identifier AS cancerStudyIdentifier,
+               profile.genetic_alteration_type AS molecularAlterationType,
+               profile.datatype AS datatype,
+               profile.name AS name,
+               profile.description AS description,
+               profile.show_profile_in_analysis_tab AS showProfileInAnalysisTab,
+               profile.pivot_threshold AS pivotThreshold,
+               profile.sort_order AS sortOrder,
+               profile.generic_assay_type AS genericAssayType,
+               profile.patient_level AS patientLevel,
+               study.cancer_study_id AS `cancerStudy.cancerStudyId`,
+               study.cancer_study_identifier AS `cancerStudy.cancerStudyIdentifier`,
+               study.type_of_cancer_id AS `cancerStudy.typeOfCancerId`,
+               study.name AS `cancerStudy.name`,
+               study.description AS `cancerStudy.description`,
+               study.`public` AS `cancerStudy.publicStudy`,
+               study.pmid AS `cancerStudy.pmid`,
+               study.citation AS `cancerStudy.citation`,
+               study.`groups` AS `cancerStudy.groups`,
+               study.status AS `cancerStudy.status`,
+               study.import_date AS `cancerStudy.importDate`,
+               reference_genome.name AS `cancerStudy.referenceGenome`
+        FROM genetic_profile profile
+        INNER JOIN cancer_study study ON profile.cancer_study_id = study.cancer_study_id
+        INNER JOIN reference_genome ON study.reference_genome_id = reference_genome.reference_genome_id
+        ORDER BY profile.stable_id
+    </select>
+
+    <sql id="mutationAlterationFilter">
+        <choose>
+            <when test="alterationFilterHelper.getMutationTypeList().hasNone()">
+                AND mutation_type = 'NA'
+            </when>
+            <when test="!alterationFilterHelper.getMutationTypeList().hasAll()">
+                AND LOWER(mutation_type)
+                <choose>
+                    <when test="alterationFilterHelper.getMutationTypeList().inverse()">NOT IN</when>
+                    <otherwise>IN</otherwise>
+                </choose>
+                <foreach item="type" collection="alterationFilterHelper.getMutationTypeList()" open="(" separator=",">
+                    LOWER(#{type})
+                </foreach>
+                <if test="!alterationFilterHelper.getMutationTypeList().inverse()">
+                    , 'na'
+                </if>
+                )
+            </when>
+        </choose>
+        <include refid="whereCustomAnnotations"/>
+        <include refid="whereMutationStatus"/>
+    </sql>
+
+    <sql id="cnaAlterationFilter">
+        <choose>
+            <when test="alterationFilterHelper.getCnaTypeList().hasNone()">
+                AND cna_alteration IS NULL
+            </when>
+            <when test="!alterationFilterHelper.getCnaTypeList().hasAll()">
+                AND (cna_alteration IN
+                <foreach item="type" collection="alterationFilterHelper.getCnaTypeList()" open="(" separator="," close=")">
+                    #{type}
+                </foreach>
+                OR cna_alteration IS NULL)
+            </when>
+        </choose>
+        <include refid="whereCustomAnnotations"/>
+    </sql>
+
+    <sql id="whereMutationStatus">
+        <choose>
+            <when test="alterationFilterHelper.isSomeMutationStatusSelected()">
+                <trim prefix="AND (" suffix=")" prefixOverrides="OR">
+                    <if test="alterationFilterHelper.hasGermline()">OR LOWER(mutation_status) LIKE '%germline%'</if>
+                    <if test="alterationFilterHelper.hasSomatic()">OR LOWER(mutation_status) = 'somatic'</if>
+                    <if test="alterationFilterHelper.hasUnknownMutationStatus()">
+                        OR (LOWER(mutation_status) != 'somatic' AND LOWER(mutation_status) NOT LIKE '%germline%')
+                    </if>
+                </trim>
+            </when>
+            <when test="alterationFilterHelper.isNoMutationStatusSelected()">
+                AND mutation_status = 'NA'
+            </when>
+        </choose>
+    </sql>
+
+    <sql id="whereCustomAnnotations">
+        <choose>
+            <when test="alterationFilterHelper.isSomeDriverAnnotationsSelected()">
+                <trim prefix="AND (" suffix=")" prefixOverrides="OR">
+                    <if test="alterationFilterHelper.hasDriver()">OR LOWER(driver_filter) = 'putative_driver'</if>
+                    <if test="alterationFilterHelper.hasVUSDriver()">OR LOWER(driver_filter) = 'putative_passenger'</if>
+                    <if test="alterationFilterHelper.hasUnknownOncogenicity()">
+                        OR driver_filter IS NULL OR LOWER(driver_filter) IN ('unknown', 'na', '')
+                    </if>
+                </trim>
+            </when>
+            <when test="alterationFilterHelper.isNoDriverAnnotationSelected()">
+                AND driver_filter = 'NA'
+            </when>
+        </choose>
+        <include refid="whereIncludeTiers"/>
+    </sql>
+
+    <sql id="whereIncludeTiers">
+        <choose>
+            <when test="alterationFilterHelper.isSomeTierOptionsSelected()">
+                <trim prefix="AND (" suffix=")" prefixOverrides="OR">
+                    <if test="alterationFilterHelper.getSelectedTiers() != null and alterationFilterHelper.getSelectedTiers().hasValues()">
+                        OR driver_tiers_filter IN
+                        <foreach item="tier" collection="alterationFilterHelper.getSelectedTiers()" open="(" separator="," close=")">
+                            #{tier}
+                        </foreach>
+                    </if>
+                    <if test="alterationFilterHelper.hasUnknownTier()">
+                        OR driver_tiers_filter IS NULL OR LOWER(driver_tiers_filter) IN ('', 'na', 'unknown')
+                    </if>
+                </trim>
+            </when>
+            <when test="alterationFilterHelper.isNoTierOptionsSelected()">
+                AND NULL
+            </when>
+        </choose>
+    </sql>
+</mapper>

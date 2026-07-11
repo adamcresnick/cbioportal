@@ -61,17 +61,18 @@
             </when>
             <otherwise>
                 <if test="@java.util.Arrays@stream(molecularProfileIds.toArray()).distinct().count() == 1">
-                    <bind name="sampleArray" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@listToArray(sampleIds)" />
                     genetic_profile.stable_id = #{molecularProfileIds[0]} AND
-                    sample.stable_id IN (
-                        #{sampleArray, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                    )
+                    sample.stable_id IN
+                    <foreach item="sampleId" collection="sampleIds" open="(" separator="," close=")">
+                        #{sampleId}
+                    </foreach>
                 </if>
                 <if test="@java.util.Arrays@stream(molecularProfileIds.toArray()).distinct().count() > 1">
                     <bind name="sampleProfileKeys" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@combineStudyAndEntityIds(sampleIds, molecularProfileIds)" />
-                    CONCAT(sample.stable_id, ':', genetic_profile.stable_id) IN (
-                        #{sampleProfileKeys, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                    )
+                    CONCAT(sample.stable_id, ':', genetic_profile.stable_id) IN
+                    <foreach item="sampleProfileKey" collection="sampleProfileKeys" open="(" separator="," close=")">
+                        #{sampleProfileKey}
+                    </foreach>
                 </if>
             </otherwise>
         </choose>
@@ -83,8 +84,8 @@
         (
         <choose>
             <when test="${singleGeneMode}">
-                (structural_variant.site1_entrez_gene_id = ${geneFilterQuery.getEntrezGeneId()}
-                OR structural_variant.site2_entrez_gene_id = ${geneFilterQuery.getEntrezGeneId()})
+                (structural_variant.site1_entrez_gene_id = #{geneFilterQuery.entrezGeneId}
+                OR structural_variant.site2_entrez_gene_id = #{geneFilterQuery.entrezGeneId})
             </when>
             <otherwise>
                 <trim prefix="" prefixOverrides="AND">
@@ -94,7 +95,7 @@
                         </when>
                         <when test="geneFilterQuery.getGene1Query().getSpecialValue() == @org.cbioportal.legacy.model.StructuralVariantSpecialValue@ANY_GENE" />
                         <otherwise>
-                            AND structural_variant.site1_entrez_gene_id = ${geneFilterQuery.getGene1Query().getEntrezId()}
+                            AND structural_variant.site1_entrez_gene_id = #{geneFilterQuery.gene1Query.entrezId}
                         </otherwise>
                     </choose>
                     <choose>
@@ -105,7 +106,7 @@
                         <when test="geneFilterQuery.getGene2Query().getSpecialValue() == @org.cbioportal.legacy.model.StructuralVariantSpecialValue@ANY_GENE" />
                         <otherwise>
                             AND
-                            structural_variant.site2_entrez_gene_id = ${geneFilterQuery.getGene2Query().getEntrezId()}
+                            structural_variant.site2_entrez_gene_id = #{geneFilterQuery.gene2Query.entrezId}
                         </otherwise>
                     </choose>
                 </trim>

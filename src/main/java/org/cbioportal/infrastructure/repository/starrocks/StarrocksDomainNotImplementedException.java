@@ -6,10 +6,14 @@ import java.lang.reflect.Method;
 public class StarrocksDomainNotImplementedException extends UnsupportedOperationException {
 
   public StarrocksDomainNotImplementedException(Class<?> repositoryType, Method method) {
+    this(repositoryType, method.getName());
+  }
+
+  public StarrocksDomainNotImplementedException(Class<?> repositoryType, String operation) {
     super(
         "StarRocks repository operation is not implemented: "
             + repositoryType.getName()
             + "#"
-            + method.getName());
+            + operation);
   }
 }
