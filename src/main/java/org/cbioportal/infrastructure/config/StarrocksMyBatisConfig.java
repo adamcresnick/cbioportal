@@ -40,6 +40,7 @@ public class StarrocksMyBatisConfig {
       DataSource dataSource, ApplicationContext applicationContext) throws IOException {
     SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
     sessionFactory.setDataSource(dataSource);
+    sessionFactory.setDatabaseIdProvider(ignored -> "starrocks");
 
     // Include StarRocks mapper XML and legacy mapper XML, but never ClickHouse mapper XML.
     sessionFactory.addMapperLocations(

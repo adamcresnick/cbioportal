@@ -62,24 +62,27 @@
             <if test="sampleIds == null">
                 cancer_study.cancer_study_identifier = #{studyIds[0]}
             </if>
-            <if test="sampleIds != null">
+            <if test="sampleIds != null and sampleIds.isEmpty()">
+                1 = 0
+            </if>
+            <if test="sampleIds != null and !sampleIds.isEmpty()">
                 <choose>
                     <when test="studyIds.stream().distinct().count() == 1">
-                        <bind name="sampleArray" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@listToArray(sampleIds)" />
                         cancer_study.cancer_study_identifier = #{studyIds[0]} AND
-                        sample.stable_id IN (
-                            #{sampleArray, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                        )
+                        sample.stable_id IN
+                            <foreach item="item" collection="sampleIds" open="(" separator="," close=")">#{item}</foreach>
                     </when>
                     <otherwise>
                         <bind name="sampleUniqueKeys" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@combineStudyAndEntityIds(studyIds, sampleIds)" />
-                        CONCAT(cancer_study.cancer_study_identifier, ':', sample.stable_id) IN (
-                            #{sampleUniqueKeys, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                        )
+                        CONCAT(cancer_study.cancer_study_identifier, ':', sample.stable_id) IN
+                            <foreach item="item" collection="sampleUniqueKeys" open="(" separator="," close=")">#{item}</foreach>
                     </otherwise>
                 </choose>
             </if>
-            <if test="_parameter.containsKey('attributeIds') and attributeIds != null">
+            <if test="_parameter.containsKey('attributeIds') and attributeIds != null and attributeIds.isEmpty()">
+                AND 1 = 0
+            </if>
+            <if test="_parameter.containsKey('attributeIds') and attributeIds != null and !attributeIds.isEmpty()">
                 AND clinical_sample.attr_id IN
                     <foreach item="item" collection="attributeIds" open="(" separator="," close=")">#{item}</foreach>
             </if>
@@ -91,24 +94,27 @@
             <if test="patientIds == null">
                 cancer_study.cancer_study_identifier = #{studyIds[0]}
             </if>
-            <if test="patientIds != null">
+            <if test="patientIds != null and patientIds.isEmpty()">
+                1 = 0
+            </if>
+            <if test="patientIds != null and !patientIds.isEmpty()">
                 <choose>
                     <when test="studyIds.stream().distinct().count() == 1">
-                        <bind name="patientArray" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@listToArray(patientIds)" />
                         cancer_study.cancer_study_identifier = #{studyIds[0]} AND
-                        patient.stable_id IN (
-                            #{patientArray, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                        )
+                        patient.stable_id IN
+                            <foreach item="item" collection="patientIds" open="(" separator="," close=")">#{item}</foreach>
                     </when>
                     <otherwise>
                         <bind name="patientUniqueKeys" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@combineStudyAndEntityIds(studyIds, patientIds)" />
-                        CONCAT(cancer_study.cancer_study_identifier, ':', patient.stable_id) IN (
-                            #{patientUniqueKeys, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                        )
+                        CONCAT(cancer_study.cancer_study_identifier, ':', patient.stable_id) IN
+                            <foreach item="item" collection="patientUniqueKeys" open="(" separator="," close=")">#{item}</foreach>
                     </otherwise>
                 </choose>
             </if>
-            <if test="_parameter.containsKey('attributeIds') and attributeIds != null">
+            <if test="_parameter.containsKey('attributeIds') and attributeIds != null and attributeIds.isEmpty()">
+                AND 1 = 0
+            </if>
+            <if test="_parameter.containsKey('attributeIds') and attributeIds != null and !attributeIds.isEmpty()">
                 AND clinical_patient.attr_id IN
                     <foreach item="item" collection="attributeIds" open="(" separator="," close=")">#{item}</foreach>
             </if>
@@ -338,7 +344,19 @@
             <when test="sortIsPatientAttr">
                 SELECT sample.internal_id sampleInternalId, sample.stable_id sampleId, patient.stable_id patientId, clinical_patient.attr_id sortAttrId,
                 <choose>
-                    <when test="sortAttrIsNumber">toFloat64OrNull(clinical_patient.attr_value) sortAttrValue
+                    <when test="sortAttrIsNumber">
+                        <choose>
+                            <when test="_databaseId == 'starrocks'">
+                                CASE
+                                    WHEN clinical_patient.attr_value REGEXP '^[&lt;>]?=?[-+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?$'
+                                    THEN CAST(REGEXP_REPLACE(clinical_patient.attr_value, '^[&lt;>]=?', '') AS DOUBLE)
+                                    ELSE NULL
+                                END sortAttrValue
+                            </when>
+                            <otherwise>
+                                toFloat64OrNull(clinical_patient.attr_value) sortAttrValue <!-- STARROCKS_LINT_ALLOW: ClickHouse databaseId branch -->
+                            </otherwise>
+                        </choose>
                     </when>
                     <otherwise>
                         clinical_patient.attr_value sortAttrValue
@@ -353,7 +371,18 @@
                 SELECT sample.internal_id sampleInternalId, sample.stable_id sampleId, patient.stable_id patientId, clinical_sample.attr_id sortAttrId,
                 <choose>
                     <when test="sortAttrIsNumber">
-                        toFloat64OrNull(clinical_sample.attr_value) sortAttrValue
+                        <choose>
+                            <when test="_databaseId == 'starrocks'">
+                                CASE
+                                    WHEN clinical_sample.attr_value REGEXP '^[&lt;>]?=?[-+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?$'
+                                    THEN CAST(REGEXP_REPLACE(clinical_sample.attr_value, '^[&lt;>]=?', '') AS DOUBLE)
+                                    ELSE NULL
+                                END sortAttrValue
+                            </when>
+                            <otherwise>
+                                toFloat64OrNull(clinical_sample.attr_value) sortAttrValue <!-- STARROCKS_LINT_ALLOW: ClickHouse databaseId branch -->
+                            </otherwise>
+                        </choose>
                     </when>
                     <otherwise>
                         clinical_sample.attr_value sortAttrValue

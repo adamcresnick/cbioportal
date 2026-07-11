@@ -13,7 +13,8 @@ public abstract class MolecularAlteration implements Serializable {
    * @param values: string with list of values, comma (,) separated
    */
   public void setValues(String values) {
-    this.values = values;
+    this.values = MolecularValueFormatter.formatValues(values);
+    this.splitValues = null;
   }
 
   /**
@@ -25,9 +26,8 @@ public abstract class MolecularAlteration implements Serializable {
    */
   public String[] getSplitValues() {
     if (splitValues == null) {
-      // Use Integer.MIN_VALUE to return empty string for empty when
-      // trailing ,,,,
-      splitValues = values.split(",", Integer.MIN_VALUE);
+      // A negative split limit preserves empty values after trailing commas.
+      splitValues = values.split(",", -1);
     }
     return splitValues;
   }

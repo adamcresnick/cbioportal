@@ -29,20 +29,6 @@ public class SqlUtils {
     return combinedKeys;
   }
 
-  /**
-   * Converts a List of strings to a String array for use with ArrayTypeHandler. ArrayTypeHandler
-   * requires Java arrays, not ArrayList objects.
-   *
-   * @param list List of strings to convert
-   * @return Array of strings
-   */
-  public static String[] listToArray(List<String> list) {
-    if (list == null) {
-      return null;
-    }
-    return list.toArray(new String[0]);
-  }
-
   public static List<EntityProfilePair> pairEntityAndProfileIds(
       List<String> entityIds, List<String> profileIds) {
     if (entityIds == null || profileIds == null || entityIds.size() != profileIds.size()) {

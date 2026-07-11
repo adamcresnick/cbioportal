@@ -43,6 +43,7 @@ public class ClickhouseMyBatisConfig {
       DataSource dataSource, ApplicationContext applicationContext) throws IOException {
     SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
     sessionFactory.setDataSource(dataSource);
+    sessionFactory.setDatabaseIdProvider(ignored -> "clickhouse");
 
     // Include both legacy and clickhouse mapper XML locations
     sessionFactory.addMapperLocations(

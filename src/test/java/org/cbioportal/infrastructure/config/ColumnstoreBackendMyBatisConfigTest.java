@@ -28,6 +28,8 @@ class ColumnstoreBackendMyBatisConfigTest {
           assertThat(context).hasSingleBean(ClickhouseMyBatisConfig.class);
           assertThat(context).doesNotHaveBean(StarrocksMyBatisConfig.class);
           assertThat(context.getBeansOfType(SqlSessionFactory.class)).hasSize(1);
+          assertThat(context.getBean(SqlSessionFactory.class).getConfiguration().getDatabaseId())
+              .isEqualTo("clickhouse");
         });
   }
 
@@ -41,6 +43,9 @@ class ColumnstoreBackendMyBatisConfigTest {
               assertThat(context).hasSingleBean(StarrocksMyBatisConfig.class);
               assertThat(context).doesNotHaveBean(ClickhouseMyBatisConfig.class);
               assertThat(context.getBeansOfType(SqlSessionFactory.class)).hasSize(1);
+              assertThat(
+                      context.getBean(SqlSessionFactory.class).getConfiguration().getDatabaseId())
+                  .isEqualTo("starrocks");
               assertThat(context).hasSingleBean(StarrocksSmokeMapper.class);
               assertThat(context).doesNotHaveBean(ClickhouseSampleMapper.class);
             });
