@@ -38,6 +38,13 @@ INSERT_PATTERN = re.compile(
     r"(?:\([^;]*?\)\s*)?VALUES\s*(?P<values>.*?);",
     re.DOTALL | re.IGNORECASE,
 )
+SELECT_INSERT_PATTERN = re.compile(
+    r"INSERT INTO\s+`?(?P<table>\w+)`?\s*"
+    r"(?:\([^;]*?\)\s*)?"
+    r"--\s*fixture-rows:\s*(?P<count>\d+)\s*"
+    r"SELECT\b.*?;",
+    re.DOTALL | re.IGNORECASE,
+)
 COLUMN_PATTERN = re.compile(r"^\s*`(?P<column>[^`]+)`\s+(?P<definition>.+?)(?:,)?\s*$")
 TABLE_REFERENCE_PATTERN = re.compile(
     r"\b(?:FROM|JOIN)\s+`?(?P<table>[A-Za-z_][A-Za-z0-9_]*)`?", re.IGNORECASE
@@ -47,14 +54,18 @@ CTE_PATTERN = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(", re.IGN
 
 def fixture_row_counts(seed_sql: str) -> Counter[str]:
     counts: Counter[str] = Counter()
-    matches = list(INSERT_PATTERN.finditer(seed_sql))
+    value_matches = list(INSERT_PATTERN.finditer(seed_sql))
+    select_matches = list(SELECT_INSERT_PATTERN.finditer(seed_sql))
     declared_insert_count = len(re.findall(r"\bINSERT INTO\b", seed_sql, re.IGNORECASE))
-    if len(matches) != declared_insert_count:
+    parsed_insert_count = len(value_matches) + len(select_matches)
+    if parsed_insert_count != declared_insert_count:
         raise ValueError(
-            f"Parsed {len(matches)} of {declared_insert_count} fixture INSERT statements"
+            f"Parsed {parsed_insert_count} of {declared_insert_count} fixture INSERT statements"
         )
-    for match in matches:
+    for match in value_matches:
         counts[match.group("table")] += count_top_level_tuples(match.group("values"))
+    for match in select_matches:
+        counts[match.group("table")] += int(match.group("count"))
     return counts
 
 

@@ -68,6 +68,20 @@ class StarrocksMapperDialectLintTest {
         .doesNotContain("combineStudyAndPatientIds");
   }
 
+  @Test
+  void sharedMutationMapperUsesSafePortableBindings() throws Exception {
+    Path mapper =
+        Path.of("src/main/resources/org/cbioportal/legacy/persistence/mybatis/MutationMapper.xml");
+    String xml = Files.readString(mapper);
+
+    assertThat(xml)
+        .doesNotContain("ArrayTypeHandler")
+        .doesNotContain("${sortBy}")
+        .doesNotContain("${direction}")
+        .doesNotContain("'${geneFilterQuery")
+        .doesNotContain("CONCAT(sampleId");
+  }
+
   private LintResult runLint(Path mapperDir) throws IOException, InterruptedException {
     Process process =
         new ProcessBuilder("bash", "scripts/lint_starrocks_mappers.sh", mapperDir.toString())
