@@ -6,9 +6,14 @@ import org.cbioportal.domain.treatment.repository.TreatmentRepository;
 import org.cbioportal.legacy.model.PatientTreatment;
 import org.cbioportal.legacy.model.SampleTreatment;
 import org.cbioportal.shared.enums.ProjectionType;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseTreatmentRepository implements TreatmentRepository {
   private final ClickhouseTreatmentMapper mapper;
 

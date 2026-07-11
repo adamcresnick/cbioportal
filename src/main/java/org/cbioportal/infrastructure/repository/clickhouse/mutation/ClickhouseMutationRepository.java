@@ -7,9 +7,14 @@ import org.cbioportal.legacy.model.meta.MutationMeta;
 import org.cbioportal.legacy.persistence.mybatis.util.MolecularProfileCaseIdentifierUtil;
 import org.cbioportal.legacy.persistence.mybatis.util.PaginationCalculator;
 import org.cbioportal.shared.MutationQueryOptions;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseMutationRepository implements MutationRepository {
 
   private final ClickhouseMutationMapper mapper;

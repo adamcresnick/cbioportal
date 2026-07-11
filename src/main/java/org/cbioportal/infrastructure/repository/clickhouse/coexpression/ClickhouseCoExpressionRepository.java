@@ -2,9 +2,14 @@ package org.cbioportal.infrastructure.repository.clickhouse.coexpression;
 
 import java.util.List;
 import org.cbioportal.domain.coexpression.repository.CoExpressionRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@ConditionalOnProperty(
+    name = "columnstore.backend",
+    havingValue = "clickhouse",
+    matchIfMissing = true)
 public class ClickhouseCoExpressionRepository implements CoExpressionRepository {
 
   private final ClickhouseCoExpressionMapper mapper;
