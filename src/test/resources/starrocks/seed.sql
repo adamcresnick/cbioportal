@@ -316,13 +316,66 @@ INSERT INTO generic_assay_data_derived VALUES
   ('sr_study_b_SB1','sr_study_b_PB1','1002','HIGH','BIOMARKER','sr_study_b_biomarker','GA_CATEGORY','CATEGORICAL',0,'biomarker');
 
 INSERT INTO mutation_derived
-  (`molecularProfileId`,`sampleId`,`sampleInternalId`,`patientId`,`entrezGeneId`,`studyId`,`proteinChange`,`mutationType`,`annotationJSON`,`driverFilter`)
-VALUES
-  ('sr_study_a_mutations','SA1',1001,'PA1',7157,'sr_study_a','R175H','Missense_Mutation','{"driver":true}','Putative_Driver'),
-  ('sr_study_a_mutations','SA2',1002,'PA1',7157,'sr_study_a','R248Q','Missense_Mutation','{"driver":true}','Putative_Driver'),
-  ('sr_study_a_mutations','SA3',1003,'PA2',1956,'sr_study_a','L858R','Missense_Mutation','{}',NULL),
-  ('sr_study_b_mutations','SB1',2001,'PB1',673,'sr_study_b','V600E','Missense_Mutation','{"driver":true}','Putative_Driver'),
-  ('sr_study_b_mutations','SB2',2002,'PB1',7157,'sr_study_b','R175H','Missense_Mutation','{}',NULL);
+-- fixture-rows: 5
+SELECT
+  genetic_profile.stable_id,
+  sample.stable_id,
+  sample.internal_id,
+  patient.stable_id,
+  mutation.entrez_gene_id,
+  cancer_study.cancer_study_identifier,
+  mutation.center,
+  mutation.mutation_status,
+  mutation.validation_status,
+  mutation.tumor_alt_count,
+  mutation.tumor_ref_count,
+  mutation.normal_alt_count,
+  mutation.normal_ref_count,
+  mutation.amino_acid_change,
+  mutation_event.chr,
+  mutation_event.start_position,
+  mutation_event.end_position,
+  mutation_event.reference_allele,
+  mutation_event.tumor_seq_allele,
+  mutation_event.protein_change,
+  mutation_event.mutation_type,
+  mutation_event.ncbi_build,
+  mutation_event.variant_type,
+  mutation_event.refseq_mrna_id,
+  mutation_event.protein_pos_start,
+  mutation_event.protein_pos_end,
+  mutation_event.keyword,
+  mutation.annotation_json,
+  alteration_driver_annotation.driver_filter,
+  alteration_driver_annotation.driver_filter_annotation,
+  alteration_driver_annotation.driver_tiers_filter,
+  alteration_driver_annotation.driver_tiers_filter_annotation,
+  gene.entrez_gene_id,
+  gene.hugo_gene_symbol,
+  gene.type,
+  allele_specific_copy_number.ascn_integer_copy_number,
+  NULLIF(allele_specific_copy_number.ascn_method, ''),
+  allele_specific_copy_number.ccf_expected_copies_upper,
+  allele_specific_copy_number.ccf_expected_copies,
+  allele_specific_copy_number.clonal,
+  allele_specific_copy_number.minor_copy_number,
+  allele_specific_copy_number.expected_alt_copies,
+  allele_specific_copy_number.total_copy_number
+FROM mutation
+JOIN genetic_profile ON mutation.genetic_profile_id = genetic_profile.genetic_profile_id
+JOIN sample ON mutation.sample_id = sample.internal_id
+JOIN patient ON sample.patient_id = patient.internal_id
+JOIN cancer_study ON patient.cancer_study_id = cancer_study.cancer_study_id
+JOIN mutation_event ON mutation.mutation_event_id = mutation_event.mutation_event_id
+JOIN gene ON mutation.entrez_gene_id = gene.entrez_gene_id
+LEFT JOIN alteration_driver_annotation
+  ON mutation.genetic_profile_id = alteration_driver_annotation.genetic_profile_id
+  AND mutation.sample_id = alteration_driver_annotation.sample_id
+  AND mutation.mutation_event_id = alteration_driver_annotation.alteration_event_id
+LEFT JOIN allele_specific_copy_number
+  ON mutation.mutation_event_id = allele_specific_copy_number.mutation_event_id
+  AND mutation.genetic_profile_id = allele_specific_copy_number.genetic_profile_id
+  AND mutation.sample_id = allele_specific_copy_number.sample_id;
 
 INSERT INTO generic_assay_profile_entity_derived VALUES
   ('sr_study_a_response','GA_NUMERIC'),('sr_study_a_biomarker','GA_CATEGORY'),

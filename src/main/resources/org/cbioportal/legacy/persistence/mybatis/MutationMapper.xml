@@ -40,9 +40,9 @@
         </if>
         <if test="projection == 'DETAILED'">
             ,   
-            GENE.entrezGeneId,
-            GENE.hugoGeneSymbol,
-            GENE.type,
+            `GENE.entrezGeneId`,
+            `GENE.hugoGeneSymbol`,
+            `GENE.type`,
             <include refid="getAlleleSpecificCopyNumber">
                  <property name="prefix" value="alleleSpecificCopyNumber."/>
             </include>          
@@ -50,15 +50,48 @@
         </if>
     </sql>
 
-    <sql id="projectionAndLimitFilter">
+    <sql id="orderBy">
         <choose>
             <when test="sortBy != null and projection != 'ID'">
-                ORDER BY "${sortBy}" ${direction}
+                ORDER BY
+                <choose>
+                    <when test="sortBy == 'entrezGeneId'">entrezGeneId</when>
+                    <when test="sortBy == 'center'">center</when>
+                    <when test="sortBy == 'mutationStatus'">mutationStatus</when>
+                    <when test="sortBy == 'validationStatus'">validationStatus</when>
+                    <when test="sortBy == 'tumorAltCount'">tumorAltCount</when>
+                    <when test="sortBy == 'tumorRefCount'">tumorRefCount</when>
+                    <when test="sortBy == 'normalAltCount'">normalAltCount</when>
+                    <when test="sortBy == 'normalRefCount'">normalRefCount</when>
+                    <when test="sortBy == 'aminoAcidChange'">aminoAcidChange</when>
+                    <when test="sortBy == 'startPosition'">startPosition</when>
+                    <when test="sortBy == 'endPosition'">endPosition</when>
+                    <when test="sortBy == 'referenceAllele'">referenceAllele</when>
+                    <when test="sortBy == 'tumorSeqAllele'">tumorSeqAllele</when>
+                    <when test="sortBy == 'proteinChange'">proteinChange</when>
+                    <when test="sortBy == 'mutationType'">mutationType</when>
+                    <when test="sortBy == 'ncbiBuild'">ncbiBuild</when>
+                    <when test="sortBy == 'variantType'">variantType</when>
+                    <when test="sortBy == 'refseqMrnaId'">refseqMrnaId</when>
+                    <when test="sortBy == 'proteinPosStart'">proteinPosStart</when>
+                    <when test="sortBy == 'proteinPosEnd'">proteinPosEnd</when>
+                    <when test="sortBy == 'keyword'">keyword</when>
+                    <otherwise>molecularProfileId</otherwise>
+                </choose>
+                <choose>
+                    <when test="direction == 'DESC'">DESC</when>
+                    <otherwise>ASC</otherwise>
+                </choose>,
+                molecularProfileId ASC, sampleId ASC, entrezGeneId ASC, proteinChange ASC
             </when>
             <otherwise>
                 ORDER BY molecularProfileId ASC, sampleId ASC, entrezGeneId ASC, proteinChange ASC
             </otherwise>
         </choose>
+    </sql>
+
+    <sql id="projectionAndLimitFilter">
+        <include refid="orderBy"/>
         
         <if test="limit != null and limit != 0">
             LIMIT #{limit} OFFSET #{offset}
@@ -112,35 +145,33 @@
 
     <sql id="whereInMultipleMolecularProfiles">
         <where>
-            <if test="sampleIds != null and !sampleIds.isEmpty()">
-                sampleInternalId IN (
-                SELECT sample.internal_id FROM sample
-                INNER JOIN patient ON sample.patient_id = patient.internal_id
-                INNER JOIN genetic_profile ON patient.cancer_study_id = genetic_profile.cancer_study_id
-                WHERE
+            <choose>
+                <when test="molecularProfileIds == null or molecularProfileIds.isEmpty()">
+                    1 = 0
+                </when>
+                <when test="sampleIds != null and !sampleIds.isEmpty()">
                 <if test="@java.util.Arrays@stream(molecularProfileIds.toArray()).distinct().count() == 1">
-                    <bind name="sampleArray" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@listToArray(sampleIds)" />
-                    genetic_profile.stable_id = #{molecularProfileIds[0]} AND
-                    sample.stable_id IN (
-                        #{sampleArray, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                    )
+                    molecularProfileId = #{molecularProfileIds[0]}
+                    AND sampleId IN
+                    <foreach item="sampleId" collection="sampleIds" open="(" separator="," close=")">
+                        #{sampleId}
+                    </foreach>
                 </if>
                 <if test="@java.util.Arrays@stream(molecularProfileIds.toArray()).distinct().count() > 1">
-                    <bind name="sampleProfileKeys" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@combineStudyAndEntityIds(sampleIds, molecularProfileIds)" />
-                    CONCAT(sample.stable_id, ':', genetic_profile.stable_id) IN (
-                        #{sampleProfileKeys, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                    )
-                    <bind name="profileArray" value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@listToArray(molecularProfileIds)" />
-                    AND genetic_profile.stable_id IN (
-                        #{profileArray, typeHandler=org.apache.ibatis.type.ArrayTypeHandler}
-                    )
+                    <bind name="sampleProfilePairs"
+                          value="@org.cbioportal.legacy.persistence.mybatis.util.SqlUtils@pairEntityAndProfileIds(sampleIds, molecularProfileIds)"/>
+                    <foreach item="sampleProfilePair" collection="sampleProfilePairs"
+                             open="(" separator=" OR " close=")">
+                        (sampleId = #{sampleProfilePair.entityId}
+                        AND molecularProfileId = #{sampleProfilePair.profileId})
+                    </foreach>
                 </if>
-                )
-            </if>
-            <if test="sampleIds == null || sampleIds.isEmpty()">
-                molecularProfileId IN
+                </when>
+                <otherwise>
+                    molecularProfileId IN
                     <foreach item="item" collection="molecularProfileIds" open="(" separator="," close=")">#{item}</foreach>
-            </if>
+                </otherwise>
+            </choose>
             <if test="_parameter.containsKey('entrezGeneIds') and entrezGeneIds != null and !entrezGeneIds.isEmpty()">
                 AND entrezGeneId IN
                     <foreach item="item" collection="entrezGeneIds" open="(" separator="," close=")">#{item}</foreach>
@@ -159,7 +190,7 @@
         <if test="(_parameter.containsKey('geneQueries') and geneQueries != null and !geneQueries.isEmpty())">
             AND
             <foreach item="geneFilterQuery" collection="geneQueries" open="(" separator=" OR " close=")">
-                ( mutation_derived.entrezGeneId = '${geneFilterQuery.getEntrezGeneId()}'
+                ( mutation_derived.entrezGeneId = #{geneFilterQuery.entrezGeneId}
                 <bind name="allMutationStatusSelected" value="geneFilterQuery.getIncludeGermline() and geneFilterQuery.getIncludeSomatic() and geneFilterQuery.getIncludeUnknownStatus()" />
                 <bind name="noMutationStatusSelected" value="not geneFilterQuery.getIncludeGermline() and not geneFilterQuery.getIncludeSomatic() and not geneFilterQuery.getIncludeUnknownStatus()" />
                 <choose>
@@ -240,14 +271,14 @@
     </sql>
 
     <sql id="getAlleleSpecificCopyNumber">
-        alleleSpecificCopyNumber.ascnIntegerCopyNumber,
-        alleleSpecificCopyNumber.ascnMethod,
-        alleleSpecificCopyNumber.ccfExpectedCopiesUpper,
-        alleleSpecificCopyNumber.ccfExpectedCopies,
-        alleleSpecificCopyNumber.clonal,
-        alleleSpecificCopyNumber.minorCopyNumber,
-        alleleSpecificCopyNumber.expectedAltCopies,
-        alleleSpecificCopyNumber.totalCopyNumber
+        `alleleSpecificCopyNumber.ascnIntegerCopyNumber`,
+        `alleleSpecificCopyNumber.ascnMethod`,
+        `alleleSpecificCopyNumber.ccfExpectedCopiesUpper`,
+        `alleleSpecificCopyNumber.ccfExpectedCopies`,
+        `alleleSpecificCopyNumber.clonal`,
+        `alleleSpecificCopyNumber.minorCopyNumber`,
+        `alleleSpecificCopyNumber.expectedAltCopies`,
+        `alleleSpecificCopyNumber.totalCopyNumber`
     </sql>
 
     <sql id="includeAlleleSpecificCopyNumber">
@@ -279,14 +310,7 @@
         </if>
         <include refid="whereBySampleListId"/>
 
-        <choose>    
-            <when test="sortBy != null and projection != 'ID'">
-                ORDER BY "${sortBy}" ${direction}
-            </when>
-            <otherwise>
-                ORDER BY molecularProfileId ASC, sampleId ASC, entrezGeneId ASC
-            </otherwise>
-        </choose>
+        <include refid="orderBy"/>
             
         <if test="limit != null and limit != 0">
             LIMIT #{limit} OFFSET #{offset}
@@ -340,17 +364,6 @@
         <include refid="where"/>
     </select>
 
-    <select id="getSampleCountByEntrezGeneIdsAndSampleIds" resultType="org.cbioportal.legacy.model.MutationCountByGene">
-        SELECT
-        entrezGeneId AS "entrezGeneId",
-        ANY_VALUE(GENE.hugoGeneSymbol) AS "hugoGeneSymbol",
-        COUNT(*) AS "totalCount",
-        COUNT(DISTINCT(sampleId)) AS "numberOfAlteredCases"
-        FROM mutation_derived
-        <include refid="where"/>
-        GROUP BY mutation_derived.entrezGeneId
-    </select>
-
     <select id="getMutationCountByPosition" resultType="org.cbioportal.legacy.model.MutationCountByPosition">
         <!-- this is a workaround for a problem in CH when column names must equal alias  -->
         SELECT
@@ -365,12 +378,12 @@
                 AND proteinPosStart >= #{proteinPosStart}
                 AND proteinPosEnd <![CDATA[ <= ]]> #{proteinPosEnd}
         GROUP BY entrezGeneId
-        )
+        ) mutation_position_count
     </select>
 
     <select id="getMutationCountsByType" resultMap="genomicDataCountItem">
         SELECT
-            ANY_VALUE(GENE.hugoGeneSymbol) as hugoGeneSymbol,
+            ANY_VALUE(`GENE.hugoGeneSymbol`) as hugoGeneSymbol,
             #{profileType} as profileType,
             REPLACE(mutationType, '_', ' ') AS label,
             mutationType AS value,
