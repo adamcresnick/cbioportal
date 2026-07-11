@@ -41,6 +41,19 @@ class StarrocksMapperDialectLintTest {
     assertThat(result.output).contains("multiIf");
   }
 
+  @Test
+  void nestedSharedFragmentsUseFullyQualifiedReferences() throws Exception {
+    Path mapper =
+        Path.of(
+            "src/main/resources/mappers/starrocks/studyview/StarrocksStudyViewFilterMapper.xml");
+    String xml = Files.readString(mapper);
+
+    assertThat(xml)
+        .doesNotContain("<include refid=\"isAttributeValueNA\"")
+        .contains(
+            "<include refid=\"org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA\"");
+  }
+
   private LintResult runLint(Path mapperDir) throws IOException, InterruptedException {
     Process process =
         new ProcessBuilder("bash", "scripts/lint_starrocks_mappers.sh", mapperDir.toString())

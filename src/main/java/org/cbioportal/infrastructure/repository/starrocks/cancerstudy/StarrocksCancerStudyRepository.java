@@ -89,7 +89,7 @@ public class StarrocksCancerStudyRepository implements CancerStudyRepository {
       cacheResolver = "staticRepositoryCacheOneResolver",
       condition = "@cacheEnabledConfig.getEnabled()")
   public List<String> getFilteredStudyIds(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireBaseFilterFamilies(studyViewFilterContext);
+    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return cancerStudyMapper.getFilteredStudyIds(studyViewFilterContext);
   }
 

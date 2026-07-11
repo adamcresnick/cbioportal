@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper
+        namespace="org.cbioportal.infrastructure.repository.starrocks.treatment.StarrocksTreatmentMapper">
+
+    <resultMap id="PatientTreatment" type="org.cbioportal.legacy.model.PatientTreatment">
+        <constructor>
+            <arg column="treatment" javaType="String"/>
+            <arg column="count" javaType="_int"/>
+        </constructor>
+    </resultMap>
+    <select id="getPatientTreatments" resultMap="PatientTreatment">
+        SELECT
+        value AS treatment,
+        count(DISTINCT patient_unique_id) AS count
+        FROM clinical_event_data_derived
+        <where>
+            <if test="studyViewFilterContext.customDataFilterCancerStudies != null and !studyViewFilterContext.customDataFilterCancerStudies.isEmpty()">
+                cancer_study_identifier IN
+                <foreach item="studyId" collection="studyViewFilterContext.customDataFilterCancerStudies" open="(" separator="," close=")">
+                    #{studyId}
+                </foreach>
+                AND
+            </if>
+            lower(event_type) = 'treatment'
+            AND `key` = 'AGENT'
+            AND
+            <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingPatientId"/>
+        </where>
+        GROUP BY value
+        ORDER BY value
+    </select>
+
+    <select id="getPatientTreatmentCounts" resultType="int">
+        SELECT
+        count(DISTINCT patient_unique_id) AS totalPatients
+        FROM sample_derived
+        <where>
+            patient_unique_id IN (
+            SELECT
+            patient_unique_id
+            FROM clinical_event_data_derived
+            <where>
+                <if test="studyViewFilterContext.customDataFilterCancerStudies != null and !studyViewFilterContext.customDataFilterCancerStudies.isEmpty()">
+                    cancer_study_identifier IN
+                    <foreach item="studyId" collection="studyViewFilterContext.customDataFilterCancerStudies" open="(" separator="," close=")">
+                        #{studyId}
+                    </foreach>
+                    AND
+                </if>
+                lower(event_type) = 'treatment'
+                AND `key` = 'AGENT'
+                AND
+                <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingPatientId"/>
+            </where>
+            )
+        </where>
+    </select>
+
+    <select id="getTotalSampleTreatmentCounts" resultType="int">
+        SELECT
+        count(distinct concat(ced.cancer_study_identifier, '_', ced.value)) AS totalSamples
+        FROM clinical_event_data_derived ced
+        <where>
+            <if test="studyViewFilterContext.customDataFilterCancerStudies != null and !studyViewFilterContext.customDataFilterCancerStudies.isEmpty()">
+                cancer_study_identifier IN
+                <foreach item="studyId" collection="studyViewFilterContext.customDataFilterCancerStudies" open="(" separator="," close=")">
+                    #{studyId}
+                </foreach>
+                AND
+            </if>
+            LOWER(event_type) IN ('sample acquisition', 'specimen')
+            AND `key` = 'SAMPLE_ID'
+            AND
+            concat(ced.cancer_study_identifier, '_', ced.value) IN ( <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleUniqueIdsFromStudyViewFilter"/>)
+            AND
+            patient_unique_id IN (
+            SELECT
+            patient_unique_id
+            FROM clinical_event_data_derived
+            <where>
+                <if test="studyViewFilterContext.customDataFilterCancerStudies != null and !studyViewFilterContext.customDataFilterCancerStudies.isEmpty()">
+                    cancer_study_identifier IN
+                    <foreach item="studyId" collection="studyViewFilterContext.customDataFilterCancerStudies" open="(" separator="," close=")">
+                        #{studyId}
+                    </foreach>
+                    AND
+                </if>
+                lower(event_type) = 'treatment'
+                AND `key` = 'AGENT'
+                AND
+                <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.applyStudyViewFilterUsingPatientId"/>
+            </where>
+            )
+        </where>
+    </select>
+
+    <resultMap id="SampleTreatmentRow" type="org.cbioportal.infrastructure.repository.starrocks.treatment.StarrocksSampleTreatmentRow">
+        <constructor>
+            <arg name="treatment" column="treatment" javaType="String"/>
+            <arg name="temporalRelation" column="temporalRelation" javaType="String"/>
+            <arg name="sampleId" column="sampleId" javaType="String"/>
+            <arg name="patientId" column="patientId" javaType="String"/>
+            <arg name="timeTaken" column="timeTaken" javaType="Integer"/>
+            <arg name="studyId" column="studyId" javaType="String"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="sampleAcquisitionEvents">
+        SELECT
+            ced.value AS sample_id,
+            ced.patient_unique_id,
+            min(ced.start_date) AS time_taken,
+            ced.cancer_study_identifier AS cancer_study_identifier
+        FROM clinical_event_data_derived ced
+        <where>
+            <if test="studyViewFilterContext.customDataFilterCancerStudies != null and !studyViewFilterContext.customDataFilterCancerStudies.isEmpty()">
+                cancer_study_identifier IN
+                <foreach item="studyId" collection="studyViewFilterContext.customDataFilterCancerStudies" open="(" separator="," close=")">
+                    #{studyId}
+                </foreach>
+                AND
+            </if>
+            LOWER(event_type) IN ('sample acquisition', 'specimen')
+            AND `key` = 'SAMPLE_ID'
+        </where>
+        GROUP BY patient_unique_id, ced.value, cancer_study_identifier
+    </sql>
+
+    <sql id="treatments">
+        SELECT
+            patient_unique_id,
+            value AS treatment,
+            MIN(start_date) AS treatment_time_taken
+        FROM clinical_event_data_derived
+        <where>
+            <if test="studyViewFilterContext.customDataFilterCancerStudies != null and !studyViewFilterContext.customDataFilterCancerStudies.isEmpty()">
+                cancer_study_identifier IN
+                <foreach item="studyId" collection="studyViewFilterContext.customDataFilterCancerStudies" open="(" separator="," close=")">
+                    #{studyId}
+                </foreach>
+                AND
+            </if>
+            lower(event_type) = 'treatment'
+            AND `key` = 'AGENT'
+        </where>
+        GROUP BY patient_unique_id, value
+    </sql>
+
+    <!-- Return one stable row per treatment/sample relation; the repository builds API aggregates. -->
+    <select id="getSampleTreatmentRows" resultMap="SampleTreatmentRow">
+        WITH sample_acquisition_events AS (<include refid="sampleAcquisitionEvents" />),
+        treatments AS (<include refid="treatments" />)
+        SELECT
+            treatments.treatment AS treatment,
+            CASE WHEN ced.time_taken &lt;= treatments.treatment_time_taken THEN 'Pre' ELSE 'Post' END AS temporalRelation,
+            ced.sample_id AS sampleId,
+            SUBSTRING(ced.patient_unique_id, CHAR_LENGTH(ced.cancer_study_identifier) + 2) AS patientId,
+            ced.time_taken AS timeTaken,
+            ced.cancer_study_identifier AS studyId
+        FROM sample_acquisition_events ced
+        INNER JOIN treatments ON treatments.patient_unique_id = ced.patient_unique_id
+        <where>
+            concat(ced.cancer_study_identifier, '_', ced.sample_id) IN ( <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleUniqueIdsFromStudyViewFilter"/>)
+        </where>
+        ORDER BY treatments.treatment, temporalRelation, studyId, sampleId
+    </select>
+
+</mapper>

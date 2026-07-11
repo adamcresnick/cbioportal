@@ -51,11 +51,163 @@
                 </if>
             </foreach>
         </if>
+        <if test="studyViewFilterContext.clinicalDataFilters != null and !studyViewFilterContext.clinicalDataFilters.isEmpty()">
+            <foreach item="clinicalDataFilter" collection="studyViewFilterContext.clinicalDataFilters">
+                AND (
+                <foreach item="filterValue" collection="clinicalDataFilter.values" open="(" separator=" OR " close=")">
+                    <choose>
+                        <when test="filterValue.value == 'NA'">
+                            NOT EXISTS (
+                                SELECT 1
+                                FROM clinical_data_derived sample_clinical_filter
+                                WHERE sample_clinical_filter.attribute_name = #{clinicalDataFilter.attributeId}
+                                  AND sample_clinical_filter.sample_unique_id = base_sample.sample_unique_id
+                                  AND NOT (<include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA"><property name="attribute_value" value="sample_clinical_filter.attribute_value"/></include>)
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM clinical_data_derived patient_clinical_filter
+                                WHERE patient_clinical_filter.attribute_name = #{clinicalDataFilter.attributeId}
+                                  AND patient_clinical_filter.patient_unique_id = base_sample.patient_unique_id
+                                  AND patient_clinical_filter.type = 'patient'
+                                  AND NOT (<include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA"><property name="attribute_value" value="patient_clinical_filter.attribute_value"/></include>)
+                            )
+                        </when>
+                        <otherwise>
+                            (
+                                EXISTS (
+                                    SELECT 1
+                                    FROM clinical_data_derived sample_clinical_filter
+                                    WHERE sample_clinical_filter.attribute_name = #{clinicalDataFilter.attributeId}
+                                      AND sample_clinical_filter.sample_unique_id = base_sample.sample_unique_id
+                                      <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.clinicalDataValueMatches">
+                                          <property name="clinical_alias" value="sample_clinical_filter"/>
+                                      </include>
+                                )
+                                OR EXISTS (
+                                    SELECT 1
+                                    FROM clinical_data_derived patient_clinical_filter
+                                    WHERE patient_clinical_filter.attribute_name = #{clinicalDataFilter.attributeId}
+                                      AND patient_clinical_filter.patient_unique_id = base_sample.patient_unique_id
+                                      AND patient_clinical_filter.type = 'patient'
+                                      <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.clinicalDataValueMatches">
+                                          <property name="clinical_alias" value="patient_clinical_filter"/>
+                                      </include>
+                                )
+                            )
+                        </otherwise>
+                    </choose>
+                </foreach>
+                )
+            </foreach>
+        </if>
+        <if test="studyViewFilterContext.clinicalEventFilters != null and !studyViewFilterContext.clinicalEventFilters.isEmpty()">
+            <foreach item="eventFilter" collection="studyViewFilterContext.clinicalEventFilters">
+                AND EXISTS (
+                    SELECT 1
+                    FROM clinical_event_data_derived event_filter
+                    WHERE event_filter.patient_unique_id = base_sample.patient_unique_id
+                      AND
+                      <foreach item="filterValue" collection="eventFilter.values" open="(" separator=" OR " close=")">
+                          LOWER(event_filter.event_type) = LOWER(#{filterValue.value})
+                      </foreach>
+                )
+            </foreach>
+        </if>
+        <if test="studyViewFilterContext.patientTreatmentFilters != null and studyViewFilterContext.patientTreatmentFilters.filters != null and !studyViewFilterContext.patientTreatmentFilters.filters.isEmpty()">
+            <foreach item="treatmentGroup" collection="studyViewFilterContext.patientTreatmentFilters.filters">
+                AND EXISTS (
+                    SELECT 1
+                    FROM clinical_event_data_derived patient_treatment
+                    WHERE patient_treatment.patient_unique_id = base_sample.patient_unique_id
+                      AND LOWER(patient_treatment.event_type) = 'treatment'
+                      AND patient_treatment.`key` = 'AGENT'
+                      AND patient_treatment.value IN
+                      <foreach item="treatmentFilter" collection="treatmentGroup.filters" open="(" separator="," close=")">
+                          #{treatmentFilter.treatment}
+                      </foreach>
+                )
+            </foreach>
+        </if>
+        <if test="studyViewFilterContext.sampleTreatmentFilters != null and studyViewFilterContext.sampleTreatmentFilters.filters != null and !studyViewFilterContext.sampleTreatmentFilters.filters.isEmpty()">
+            <foreach item="treatmentGroup" collection="studyViewFilterContext.sampleTreatmentFilters.filters">
+                AND (
+                <foreach item="treatmentFilter" collection="treatmentGroup.filters" open="(" separator=" OR " close=")">
+                    EXISTS (
+                        SELECT 1
+                        FROM clinical_event_data_derived acquisition
+                        INNER JOIN clinical_event_data_derived sample_treatment
+                            ON sample_treatment.patient_unique_id = acquisition.patient_unique_id
+                        WHERE acquisition.patient_unique_id = base_sample.patient_unique_id
+                          AND acquisition.cancer_study_identifier = base_sample.cancer_study_identifier
+                          AND acquisition.`key` = 'SAMPLE_ID'
+                          AND acquisition.value = base_sample.sample_stable_id
+                          AND LOWER(acquisition.event_type) IN ('sample acquisition', 'specimen')
+                          AND LOWER(sample_treatment.event_type) = 'treatment'
+                          AND sample_treatment.`key` = 'AGENT'
+                          AND sample_treatment.value = #{treatmentFilter.treatment}
+                        <choose>
+                            <when test="treatmentFilter.time.name() == 'Pre'">
+                                AND acquisition.start_date &lt;= sample_treatment.start_date
+                            </when>
+                            <otherwise>
+                                AND acquisition.start_date &gt; sample_treatment.start_date
+                            </otherwise>
+                        </choose>
+                    )
+                </foreach>
+                )
+            </foreach>
+        </if>
     </sql>
 
     <sql id="applyStudyViewFilterUsingSampleId">
         sample_unique_id IN (
             <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleUniqueIdsFromStudyViewFilter"/>
         )
+    </sql>
+
+    <sql id="applyStudyViewFilterUsingPatientId">
+        patient_unique_id IN (
+            SELECT patient_unique_id
+            FROM sample_derived
+            WHERE sample_unique_id IN (
+                <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleUniqueIdsFromStudyViewFilter"/>
+            )
+        )
+    </sql>
+
+    <sql id="isAttributeValueNA">
+        ${attribute_value} IS NULL
+        OR TRIM(${attribute_value}) = ''
+        OR UPPER(TRIM(${attribute_value})) IN ('NA', 'NAN', 'N/A')
+    </sql>
+
+    <sql id="clinicalDataValueMatches">
+        <choose>
+            <when test="filterValue.value != null">
+                AND LOWER(TRIM(${clinical_alias}.attribute_value)) = LOWER(TRIM(#{filterValue.value}))
+            </when>
+            <when test="filterValue.start != null or filterValue.end != null">
+                AND ${clinical_alias}.attribute_value REGEXP '^[&lt;>]?=?[-+]?[0-9]*[.]?[0-9]+$'
+                <if test="filterValue.start != null and filterValue.start == filterValue.end">
+                    AND ABS(CAST(REGEXP_REPLACE(${clinical_alias}.attribute_value, '^[&lt;>]=?', '') AS DOUBLE) - #{filterValue.start}) &lt; 0.00000000001
+                </if>
+                <if test="filterValue.start != null and filterValue.start != filterValue.end">
+                    AND CAST(REGEXP_REPLACE(${clinical_alias}.attribute_value, '^[&lt;>]=?', '') AS DOUBLE) &gt; #{filterValue.start}
+                </if>
+                <if test="filterValue.end != null and filterValue.start != filterValue.end">
+                    AND CAST(REGEXP_REPLACE(${clinical_alias}.attribute_value, '^[&lt;>]=?', '') AS DOUBLE) &lt;= #{filterValue.end}
+                </if>
+            </when>
+        </choose>
+    </sql>
+
+    <sql id="normalizeAttributeValue">
+        CASE
+            WHEN <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA"><property name="attribute_value" value="${attribute_value}"/></include>
+            THEN 'NA'
+            ELSE ${attribute_value}
+        END
     </sql>
 </mapper>

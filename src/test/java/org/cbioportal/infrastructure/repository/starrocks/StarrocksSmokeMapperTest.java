@@ -31,8 +31,12 @@ import org.cbioportal.infrastructure.repository.clickhouse.patient.ClickhousePat
 import org.cbioportal.infrastructure.repository.clickhouse.sample.ClickhouseSampleRepository;
 import org.cbioportal.infrastructure.repository.clickhouse.treatment.ClickhouseTreatmentRepository;
 import org.cbioportal.infrastructure.repository.starrocks.cancerstudy.StarrocksCancerStudyRepository;
+import org.cbioportal.infrastructure.repository.starrocks.clinical_attributes.StarrocksClinicalAttributesRepository;
+import org.cbioportal.infrastructure.repository.starrocks.clinical_data.StarrocksClinicalDataRepository;
+import org.cbioportal.infrastructure.repository.starrocks.clinical_event.StarrocksClinicalEventRepository;
 import org.cbioportal.infrastructure.repository.starrocks.patient.StarrocksPatientRepository;
 import org.cbioportal.infrastructure.repository.starrocks.sample.StarrocksSampleRepository;
+import org.cbioportal.infrastructure.repository.starrocks.treatment.StarrocksTreatmentRepository;
 import org.cbioportal.legacy.persistence.mybatisclickhouse.StudyViewMyBatisRepository;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionFactoryBean;
@@ -98,10 +102,18 @@ class StarrocksSmokeMapperTest {
         assertSingleDomainRepository(context, TreatmentRepository.class);
         assertThat(context.getBean(CancerStudyRepository.class))
             .isInstanceOf(StarrocksCancerStudyRepository.class);
+        assertThat(context.getBean(ClinicalAttributesRepository.class))
+            .isInstanceOf(StarrocksClinicalAttributesRepository.class);
+        assertThat(context.getBean(ClinicalDataRepository.class))
+            .isInstanceOf(StarrocksClinicalDataRepository.class);
+        assertThat(context.getBean(ClinicalEventRepository.class))
+            .isInstanceOf(StarrocksClinicalEventRepository.class);
         assertThat(context.getBean(PatientRepository.class))
             .isInstanceOf(StarrocksPatientRepository.class);
         assertThat(context.getBean(SampleRepository.class))
             .isInstanceOf(StarrocksSampleRepository.class);
+        assertThat(context.getBean(TreatmentRepository.class))
+            .isInstanceOf(StarrocksTreatmentRepository.class);
       }
     }
   }

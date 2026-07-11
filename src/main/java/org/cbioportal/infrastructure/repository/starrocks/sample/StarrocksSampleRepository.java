@@ -27,13 +27,13 @@ public class StarrocksSampleRepository implements SampleRepository {
 
   @Override
   public List<Sample> getFilteredSamples(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireBaseFilterFamilies(studyViewFilterContext);
+    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getFilteredSamples(studyViewFilterContext);
   }
 
   @Override
   public int getFilteredSamplesCount(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireBaseFilterFamilies(studyViewFilterContext);
+    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getSampleCount(studyViewFilterContext);
   }
 

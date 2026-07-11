@@ -1,0 +1,49 @@
+package org.cbioportal.infrastructure.repository.starrocks.treatment;
+
+import java.util.List;
+import org.apache.ibatis.annotations.Param;
+import org.cbioportal.domain.studyview.StudyViewFilterContext;
+import org.cbioportal.legacy.model.PatientTreatment;
+
+/**
+ * Mapper interface for retrieving treatment-related data from StarRocks. This interface provides
+ * methods to fetch patient treatments, sample treatment counts, and more.
+ */
+public interface StarrocksTreatmentMapper {
+
+  /**
+   * Retrieves patient treatments based on the study view filter context.
+   *
+   * @param studyViewFilterContext the context of the study view filter
+   * @return a list of patient treatments
+   */
+  List<PatientTreatment> getPatientTreatments(
+      @Param("studyViewFilterContext") StudyViewFilterContext studyViewFilterContext);
+
+  /**
+   * Retrieves the patient treatment counts based on the study view filter context.
+   *
+   * @param studyViewFilterContext the context of the study view filter
+   * @return the patient treatment count
+   */
+  int getPatientTreatmentCounts(
+      @Param("studyViewFilterContext") StudyViewFilterContext studyViewFilterContext);
+
+  /**
+   * Retrieves sample treatment counts based on the study view filter context.
+   *
+   * @param studyViewFilterContext the context of the study view filter
+   * @return a list of sample treatment counts
+   */
+  List<StarrocksSampleTreatmentRow> getSampleTreatmentRows(
+      @Param("studyViewFilterContext") StudyViewFilterContext studyViewFilterContext);
+
+  /**
+   * Retrieves the total sample treatment counts based on the study view filter context.
+   *
+   * @param studyViewFilterContext the context of the study view filter
+   * @return the total sample treatment count
+   */
+  int getTotalSampleTreatmentCounts(
+      @Param("studyViewFilterContext") StudyViewFilterContext studyViewFilterContext);
+}
