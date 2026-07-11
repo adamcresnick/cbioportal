@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.cbioportal.infrastructure.repository.starrocks.coexpression.StarrocksCoExpressionMapper">
+    <select id="getCoExpressionAggregates"
+            resultType="org.cbioportal.infrastructure.repository.starrocks.coexpression.StarrocksCoExpressionAggregateRow">
+        WITH reference_values AS (
+            SELECT sample_unique_id,
+                   CAST(alteration_value AS DOUBLE) AS referenceValue
+            FROM genetic_alteration_derived
+            WHERE cancer_study_identifier = #{cancerStudyIdentifierA}
+              AND profile_type = #{profileTypeA}
+              AND hugo_gene_symbol = #{hugoGeneSymbol}
+              AND alteration_value REGEXP '^[-+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?$'
+            <if test="sampleUniqueIds != null and !sampleUniqueIds.isEmpty()">
+                AND sample_unique_id IN
+                <foreach item="sampleUniqueId" collection="sampleUniqueIds" open="(" separator="," close=")">
+                    #{sampleUniqueId}
+                </foreach>
+            </if>
+        ),
+        paired_values AS (
+            SELECT gene.entrez_gene_id AS entrezGeneId,
+                   reference.referenceValue AS referenceValue,
+                   CAST(expression.alteration_value AS DOUBLE) AS geneValue
+            FROM genetic_alteration_derived expression
+            INNER JOIN reference_values reference
+                ON reference.sample_unique_id = expression.sample_unique_id
+            INNER JOIN gene ON gene.hugo_gene_symbol = expression.hugo_gene_symbol
+            WHERE expression.cancer_study_identifier = #{cancerStudyIdentifierB}
+              AND expression.profile_type = #{profileTypeB}
+              AND expression.hugo_gene_symbol != #{hugoGeneSymbol}
+              AND expression.alteration_value REGEXP '^[-+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?$'
+        ),
+        rank_components AS (
+            SELECT entrezGeneId,
+                   referenceValue,
+                   geneValue,
+                   RANK() OVER (PARTITION BY entrezGeneId ORDER BY referenceValue) AS referenceRank,
+                   COUNT(*) OVER (PARTITION BY entrezGeneId, referenceValue) AS referenceTieCount,
+                   RANK() OVER (PARTITION BY entrezGeneId ORDER BY geneValue) AS geneRank,
+                   COUNT(*) OVER (PARTITION BY entrezGeneId, geneValue) AS geneTieCount
+            FROM paired_values
+        ),
+        average_ranks AS (
+            SELECT entrezGeneId,
+                   geneValue,
+                   referenceRank + (referenceTieCount - 1) / 2.0 AS referenceRank,
+                   geneRank + (geneTieCount - 1) / 2.0 AS geneRank
+            FROM rank_components
+        )
+        SELECT entrezGeneId,
+               CAST(CORR(referenceRank, geneRank) AS VARCHAR) AS spearmansCorrelation,
+               CAST(COUNT(*) AS INTEGER) AS numSamples,
+               CAST(COUNT(DISTINCT geneValue) AS INTEGER) AS distinctGeneValues
+        FROM average_ranks
+        GROUP BY entrezGeneId
+        ORDER BY entrezGeneId
+    </select>
+</mapper>

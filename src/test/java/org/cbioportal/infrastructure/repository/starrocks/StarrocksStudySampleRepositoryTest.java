@@ -18,7 +18,7 @@ import org.cbioportal.infrastructure.repository.starrocks.patient.StarrocksPatie
 import org.cbioportal.infrastructure.repository.starrocks.patient.StarrocksPatientRepository;
 import org.cbioportal.infrastructure.repository.starrocks.sample.StarrocksSampleMapper;
 import org.cbioportal.infrastructure.repository.starrocks.sample.StarrocksSampleRepository;
-import org.cbioportal.legacy.web.parameter.GenericAssayDataFilter;
+import org.cbioportal.legacy.web.parameter.ClinicalDataFilter;
 import org.cbioportal.shared.SortAndSearchCriteria;
 import org.cbioportal.shared.enums.ProjectionType;
 import org.junit.jupiter.api.Test;
@@ -80,10 +80,9 @@ class StarrocksStudySampleRepositoryTest {
     verify(mapper).getSamples(List.of("study"), null, List.of("sample"), null, 0, 0, null, null);
 
     StudyViewFilterContext unsupportedFilter = mock(StudyViewFilterContext.class);
-    when(unsupportedFilter.genericAssayDataFilters())
-        .thenReturn(List.of(new GenericAssayDataFilter()));
+    when(unsupportedFilter.customDataFilters()).thenReturn(List.of(new ClinicalDataFilter()));
     assertThatThrownBy(() -> repository.getFilteredSamples(unsupportedFilter))
         .isInstanceOf(StarrocksUnsupportedStudyViewFilterException.class)
-        .hasMessageContaining("genericAssayDataFilters");
+        .hasMessageContaining("customDataFilters");
   }
 }

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
-import org.cbioportal.legacy.web.parameter.CategorizedGenericAssayDataCountFilter;
 import org.cbioportal.legacy.web.parameter.filter.AndedPatientTreatmentFilters;
 import org.cbioportal.legacy.web.parameter.filter.AndedSampleTreatmentFilters;
 
@@ -14,9 +13,6 @@ public final class StarrocksStudyViewFilterSupport {
 
   public static void requireImplementedFilterFamilies(StudyViewFilterContext context) {
     List<String> unsupported = new ArrayList<>();
-    addIfPresent(unsupported, "genericAssayDataFilters", context.genericAssayDataFilters());
-    addIfPresent(
-        unsupported, "genericAssaySelectionFilters", context.genericAssaySelectionFilters());
     addIfPresent(unsupported, "customDataFilters", context.customDataFilters());
     addIfPresent(unsupported, "customSampleIdentifiers", context.customSampleIdentifiers());
     addIfPresent(unsupported, "sampleTreatmentGroupFilters", context.sampleTreatmentGroupFilters());
@@ -26,10 +22,6 @@ public final class StarrocksStudyViewFilterSupport {
         unsupported, "patientTreatmentGroupFilters", context.patientTreatmentGroupFilters());
     addIfPresent(
         unsupported, "patientTreatmentTargetFilters", context.patientTreatmentTargetFilters());
-    addIfPresent(
-        unsupported,
-        "categorizedGenericAssayDataCountFilter",
-        context.categorizedGenericAssayDataCountFilter());
     if (!unsupported.isEmpty()) {
       throw new StarrocksUnsupportedStudyViewFilterException(unsupported);
     }
@@ -53,24 +45,5 @@ public final class StarrocksStudyViewFilterSupport {
     if (filters != null && filters.getFilters() != null && !filters.getFilters().isEmpty()) {
       unsupported.add(name);
     }
-  }
-
-  private static void addIfPresent(
-      List<String> unsupported,
-      String name,
-      CategorizedGenericAssayDataCountFilter categorizedFilters) {
-    if (categorizedFilters == null) {
-      return;
-    }
-    if (hasValues(categorizedFilters.getSampleNumericalGenericAssayDataFilters())
-        || hasValues(categorizedFilters.getSampleCategoricalGenericAssayDataFilters())
-        || hasValues(categorizedFilters.getPatientNumericalGenericAssayDataFilters())
-        || hasValues(categorizedFilters.getPatientCategoricalGenericAssayDataFilters())) {
-      unsupported.add(name);
-    }
-  }
-
-  private static boolean hasValues(Collection<?> values) {
-    return values != null && !values.isEmpty();
   }
 }

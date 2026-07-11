@@ -40,4 +40,141 @@
         ORDER BY gp.stable_id
     </select>
 
+    <select id="getGenericAssayDataCountRows"
+            resultType="org.cbioportal.infrastructure.repository.starrocks.generic_assay.StarrocksGenericAssayCountRow">
+        WITH filtered_samples AS (
+            SELECT sd.sample_unique_id, sd.patient_unique_id
+            FROM sample_derived sd
+            WHERE sd.sample_unique_id IN (
+                <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleUniqueIdsFromStudyViewFilter"/>
+            )
+        ),
+        profile_level AS (
+            SELECT COALESCE(MAX(gad.patient_level), 0) AS is_patient_level
+            FROM generic_assay_data_derived gad
+            INNER JOIN filtered_samples fs ON fs.sample_unique_id = gad.sample_unique_id
+            WHERE gad.profile_type = #{profileType}
+        ),
+        entities AS (
+            <choose>
+                <when test="stableIds != null and !stableIds.isEmpty()">
+                    <foreach item="stableId" collection="stableIds" separator=" UNION ALL ">
+                        SELECT #{stableId} AS stable_id
+                    </foreach>
+                </when>
+                <otherwise>
+                    SELECT DISTINCT gad.entity_stable_id AS stable_id
+                    FROM generic_assay_data_derived gad
+                    INNER JOIN filtered_samples fs ON fs.sample_unique_id = gad.sample_unique_id
+                    WHERE gad.profile_type = #{profileType}
+                </otherwise>
+            </choose>
+        ),
+        non_na AS (
+            SELECT gad.entity_stable_id AS stableId,
+                   <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.normalizeAttributeValue">
+                       <property name="attribute_value" value="gad.value"/>
+                   </include> AS value,
+                   CAST(
+                       CASE WHEN (SELECT is_patient_level FROM profile_level) = 1
+                            THEN COUNT(DISTINCT gad.patient_unique_id)
+                            ELSE COUNT(DISTINCT gad.sample_unique_id)
+                       END AS INTEGER
+                   ) AS count
+            FROM generic_assay_data_derived gad
+            INNER JOIN filtered_samples fs ON fs.sample_unique_id = gad.sample_unique_id
+            WHERE gad.profile_type = #{profileType}
+              AND NOT (
+                  <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA">
+                      <property name="attribute_value" value="gad.value"/>
+                  </include>
+              )
+            <if test="stableIds != null and !stableIds.isEmpty()">
+                AND gad.entity_stable_id IN
+                <foreach item="stableId" collection="stableIds" open="(" separator="," close=")">
+                    #{stableId}
+                </foreach>
+            </if>
+            GROUP BY gad.entity_stable_id, gad.value
+        ),
+        non_na_totals AS (
+            SELECT stableId, SUM(count) AS count
+            FROM non_na
+            GROUP BY stableId
+        ),
+        cohort_total AS (
+            SELECT CAST(
+                       CASE WHEN (SELECT is_patient_level FROM profile_level) = 1
+                            THEN COUNT(DISTINCT patient_unique_id)
+                            ELSE COUNT(DISTINCT sample_unique_id)
+                       END AS INTEGER
+                   ) AS count
+            FROM filtered_samples
+        )
+        SELECT stableId, value, count
+        FROM non_na
+        UNION ALL
+        SELECT entities.stable_id AS stableId,
+               'NA' AS value,
+               CAST(cohort_total.count - COALESCE(non_na_totals.count, 0) AS INTEGER) AS count
+        FROM entities
+        CROSS JOIN cohort_total
+        LEFT JOIN non_na_totals ON non_na_totals.stableId = entities.stable_id
+        <if test="!includeZeroNa">
+            WHERE cohort_total.count - COALESCE(non_na_totals.count, 0) &gt; 0
+        </if>
+        ORDER BY stableId, value
+    </select>
+
+    <select id="getGenericAssayStableIdsByProfileIds" resultType="string">
+        SELECT DISTINCT entity_stable_id
+        FROM generic_assay_profile_entity_derived
+        WHERE profile_stable_id IN
+        <foreach item="profileId" collection="profileIds" open="(" separator="," close=")">
+            #{profileId}
+        </foreach>
+        ORDER BY entity_stable_id
+    </select>
+
+    <resultMap id="GenericAssayMetaResultMap" type="org.cbioportal.legacy.model.meta.GenericAssayMeta">
+        <result property="stableId" column="stableId"/>
+        <result property="entityType" column="entityType"/>
+        <result property="genericEntityMetaProperties" column="properties"
+                typeHandler="org.cbioportal.infrastructure.repository.starrocks.typehandler.StarrocksMapTypeHandler"/>
+    </resultMap>
+
+    <select id="getGenericAssayMetaByStableIds" resultMap="GenericAssayMetaResultMap">
+        SELECT entity_stable_id AS stableId,
+               entity_type AS entityType,
+               properties
+        FROM generic_assay_meta_derived
+        WHERE entity_stable_id IN
+        <foreach item="stableId" collection="stableIds" open="(" separator="," close=")">
+            #{stableId}
+        </foreach>
+        ORDER BY entity_stable_id
+    </select>
+
+    <select id="getGenericAssayMetaByProfileIds" resultMap="GenericAssayMetaResultMap">
+        SELECT meta.entity_stable_id AS stableId,
+               meta.entity_type AS entityType,
+               meta.properties
+        FROM generic_assay_meta_derived meta
+        WHERE meta.entity_stable_id IN (
+            SELECT DISTINCT entity_stable_id
+            FROM generic_assay_profile_entity_derived
+            WHERE profile_stable_id IN
+            <foreach item="profileId" collection="profileIds" open="(" separator="," close=")">
+                #{profileId}
+            </foreach>
+        )
+        <if test="stableIds != null and !stableIds.isEmpty()">
+            AND meta.entity_stable_id IN
+            <foreach item="stableId" collection="stableIds" open="(" separator="," close=")">
+                #{stableId}
+            </foreach>
+        </if>
+        ORDER BY meta.entity_stable_id
+    </select>
+
 </mapper>
