@@ -133,10 +133,10 @@ INSERT INTO clinical_patient VALUES
   (203,'AGE','9'),(203,'OS_MONTHS','NA'),(203,'OS_STATUS','0:LIVING');
 
 INSERT INTO clinical_sample VALUES
-  (1001,'SUBTYPE','A'),(1001,'PURITY','0.80'),(1001,'SPECIAL','NA'),
+  (1001,'SUBTYPE','A'),(1001,'PURITY','<0.80'),(1001,'SPECIAL','NA'),
   (1002,'SUBTYPE','B'),(1002,'PURITY','0.55'),(1002,'SPECIAL',''),
   (1003,'SUBTYPE','A'),(1003,'PURITY','NA'),
-  (1004,'SUBTYPE','C'),(1004,'PURITY','0.70'),(1004,'SPECIAL','available'),(1004,'ALL_NA','NA'),
+  (1004,'SUBTYPE','C'),(1004,'PURITY','7e-1'),(1004,'SPECIAL','available'),(1004,'ALL_NA','NA'),
   (2001,'SUBTYPE','A'),(2001,'PURITY','0.75'),(2001,'SPECIAL','NA'),
   (2002,'SUBTYPE','B'),(2002,'PURITY','0.60'),(2002,'SPECIAL',''),
   (2003,'SUBTYPE','C'),(2003,'PURITY','0.65'),
@@ -161,7 +161,7 @@ INSERT INTO mutation
 VALUES
   (1,101,1001,7157,'Somatic','VALID','WXS',40,60,0,100,'R175H','{"driver":true}'),
   (2,101,1002,7157,'Somatic','VALID','WXS',35,65,0,100,'R248Q','{"driver":true}'),
-  (3,101,1003,1956,'Somatic','VALID','WXS',30,70,0,100,'L858R','{}'),
+  (3,101,1003,1956,'Somatic','VALID','WXS',30,70,0,100,'L858R','{"oncokb":{"impact":"HIGH"}}'),
   (4,201,2001,673,'Somatic','VALID','WXS',45,55,0,100,'V600E','{"driver":true}'),
   (1,201,2002,7157,'Somatic','VALID','WXS',25,75,0,100,'R175H','{}');
 
@@ -181,7 +181,7 @@ INSERT INTO sample_cna_event VALUES
 
 INSERT INTO genetic_alteration VALUES
   (102,1,'2,0,-1,NA'),(102,2,'0,-2,0,1'),
-  (103,1,'1.2,2.5,0.0,NA'),(103,2,'3.1,2.2,1.4,0.5'),
+  (103,1,'1.234567,0.0000123456,0.0,NA'),(103,2,'3.1,2.2,1.4,0.5'),
   (105,1001,'0.1,0.5,0.9,NA'),(106,1002,'LOW,HIGH,LOW,NA'),
   (202,1,'0,1,2,-1'),(202,3,'1,0,-2,2'),
   (203,1,'2.0,1.0,3.0,4.0'),(203,3,'0.2,0.4,0.6,0.8'),
