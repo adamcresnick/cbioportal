@@ -1,16 +1,12 @@
 package org.cbioportal.infrastructure.repository.starrocks;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.Comparator;
-import org.testcontainers.containers.BindMode;
+import java.util.Map;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -25,7 +21,6 @@ final class StarrocksTestCluster implements AutoCloseable {
   private static final int QUERY_PORT = 9030;
   private static final int BE_HTTP_PORT = 8040;
 
-  private final Path backendStorage = createBackendStorage();
   private final Network network = Network.newNetwork();
   private final GenericContainer<?> frontend =
       new GenericContainer<>(DockerImageName.parse("starrocks/fe-ubuntu:" + VERSION))
@@ -45,10 +40,7 @@ final class StarrocksTestCluster implements AutoCloseable {
           .withNetwork(network)
           .withNetworkAliases("starrocks-be")
           .withExposedPorts(BE_HTTP_PORT)
-          .withFileSystemBind(
-              backendStorage.toAbsolutePath().toString(),
-              "/opt/starrocks/be/storage",
-              BindMode.READ_WRITE)
+          .withTmpFs(Map.of("/opt/starrocks/be/storage", "rw,size=2g"))
           .withCommand(
               "bash",
               "-c",
@@ -93,15 +85,6 @@ final class StarrocksTestCluster implements AutoCloseable {
 
   private Connection openConnection() throws SQLException {
     return DriverManager.getConnection(rootJdbcUrl(), USERNAME, PASSWORD);
-  }
-
-  private static Path createBackendStorage() {
-    try {
-      Files.createDirectories(Path.of("target"));
-      return Files.createTempDirectory(Path.of("target"), "starrocks-be-storage-");
-    } catch (IOException exception) {
-      throw new IllegalStateException("Unable to create StarRocks test storage", exception);
-    }
   }
 
   private String rootJdbcUrl() {
@@ -300,30 +283,8 @@ final class StarrocksTestCluster implements AutoCloseable {
       try {
         frontend.stop();
       } finally {
-        try {
-          network.close();
-        } finally {
-          deleteBackendStorage();
-        }
+        network.close();
       }
-    }
-  }
-
-  private void deleteBackendStorage() {
-    try (var paths = Files.walk(backendStorage)) {
-      paths
-          .sorted(Comparator.reverseOrder())
-          .forEach(
-              path -> {
-                try {
-                  Files.deleteIfExists(path);
-                } catch (IOException exception) {
-                  throw new IllegalStateException(
-                      "Unable to delete StarRocks test storage " + path, exception);
-                }
-              });
-    } catch (IOException exception) {
-      throw new IllegalStateException("Unable to clean StarRocks test storage", exception);
     }
   }
 }
