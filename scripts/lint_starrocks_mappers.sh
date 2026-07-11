@@ -8,7 +8,7 @@ if [[ ! -d "${mapper_dir}" ]]; then
   exit 1
 fi
 
-rejected_pattern='argMin|argMax|groupArray|groupArrayIf|arrayStringConcat|uniqExact|multiIf|splitByString|arrayMap|ARRAY[[:space:]]+JOIN|LowCardinality|MergeTree|FORMAT[[:space:]]+TSV|OPTIMIZE[[:space:]]+TABLE|SETTINGS[[:space:]]+join_algorithm|base64Encode'
+rejected_pattern='argMin|argMax|groupArray|groupArrayIf|arrayStringConcat|uniqExact|multiIf|splitByString|arrayMap|countIf|ILIKE|ArrayTypeHandler|ARRAY[[:space:]]+JOIN|LowCardinality|MergeTree|FORMAT[[:space:]]+TSV|OPTIMIZE[[:space:]]+TABLE|SETTINGS[[:space:]]+join_algorithm|base64Encode'
 
 matches="$(
   grep -RInE --include='*.xml' "${rejected_pattern}" "${mapper_dir}" \

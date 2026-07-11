@@ -10,14 +10,14 @@ public final class PaginationCalculator {
    * Computes the SQL-style offset (0-based index).
    *
    * @param pageSize number of items per page
-   * @param pageNumber current page number (1-based; use 1 for first page)
+   * @param pageNumber current page number (0-based; use 0 for first page)
    * @return offset (number of items to skip), or null if inputs are null
    */
   public static Integer offset(Integer pageSize, Integer pageNumber) {
     if (pageSize == null) return null;
     if (pageNumber == null) return 0;
-    if (pageNumber < 1) throw new IllegalArgumentException("pageNumber must be >= 1");
-    return pageSize * (pageNumber - 1);
+    if (pageNumber < 0) throw new IllegalArgumentException("pageNumber must be >= 0");
+    return pageSize * pageNumber;
   }
 
   /**

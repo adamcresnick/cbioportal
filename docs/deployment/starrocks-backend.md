@@ -39,3 +39,9 @@ scripts/generate_starrocks_schema_inventory.py --check
 ```
 
 `StarrocksSchemaContractTest` starts the official FE and BE `3.5.19` images, applies the complete schema and fixture twice, checks all 63 tables and edge-case row counts, and rejects ClickHouse dialect tokens.
+
+## Domain coverage
+
+StarRocks mode currently has concrete repositories for cancer studies, patients, and samples. These adapters cover study metadata and resources, patient/sample counts, sample lists, ID/summary/detailed projections, stable sorting and pagination, and the base Study View sample universe for study, explicit sample, case-list, and molecular-profile selections.
+
+Clinical, event, treatment, mutation, CNA, structural-variant, molecular-value, generic-assay, co-expression, and enrichment filter families remain owned by subsequent domain ports. Passing one of those filters through a base adapter raises `StarrocksUnsupportedStudyViewFilterException`; it is never silently ignored. The remaining domain repository interfaces continue to use the explicit not-implemented fallback until their concrete adapter is merged.
