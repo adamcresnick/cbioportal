@@ -287,6 +287,102 @@
                 </foreach>
             </foreach>
         </if>
+        <if test="studyViewFilterContext.genericAssayDataFilters != null and !studyViewFilterContext.genericAssayDataFilters.isEmpty()">
+            <foreach item="genericFilter" collection="studyViewFilterContext.genericAssayDataFilters">
+                AND
+                <foreach item="filterValue" collection="genericFilter.values" open="(" separator=" OR " close=")">
+                    <choose>
+                        <when test="filterValue.value == 'NA'">
+                            NOT EXISTS (
+                                SELECT 1
+                                FROM generic_assay_data_derived generic_na_filter
+                                WHERE generic_na_filter.profile_type = #{genericFilter.profileType}
+                                  AND generic_na_filter.entity_stable_id = #{genericFilter.stableId}
+                                  AND COALESCE(generic_na_filter.patient_level, 0) != 1
+                                  AND generic_na_filter.sample_unique_id = base_sample.sample_unique_id
+                                  AND NOT (
+                                      <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA">
+                                          <property name="attribute_value" value="generic_na_filter.value"/>
+                                      </include>
+                                  )
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM generic_assay_data_derived generic_patient_na_filter
+                                WHERE generic_patient_na_filter.profile_type = #{genericFilter.profileType}
+                                  AND generic_patient_na_filter.entity_stable_id = #{genericFilter.stableId}
+                                  AND generic_patient_na_filter.patient_level = 1
+                                  AND generic_patient_na_filter.patient_unique_id = base_sample.patient_unique_id
+                                  AND NOT (
+                                      <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA">
+                                          <property name="attribute_value" value="generic_patient_na_filter.value"/>
+                                      </include>
+                                  )
+                            )
+                        </when>
+                        <otherwise>
+                            (EXISTS (
+                                SELECT 1
+                                FROM generic_assay_data_derived generic_value_filter
+                                WHERE generic_value_filter.profile_type = #{genericFilter.profileType}
+                                  AND generic_value_filter.entity_stable_id = #{genericFilter.stableId}
+                                  AND COALESCE(generic_value_filter.patient_level, 0) != 1
+                                  AND generic_value_filter.sample_unique_id = base_sample.sample_unique_id
+                                  <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.genericAssayValueMatches">
+                                      <property name="generic_alias" value="generic_value_filter"/>
+                                  </include>
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM generic_assay_data_derived generic_patient_value_filter
+                                WHERE generic_patient_value_filter.profile_type = #{genericFilter.profileType}
+                                  AND generic_patient_value_filter.entity_stable_id = #{genericFilter.stableId}
+                                  AND generic_patient_value_filter.patient_level = 1
+                                  AND generic_patient_value_filter.patient_unique_id = base_sample.patient_unique_id
+                                  <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.genericAssayValueMatches">
+                                      <property name="generic_alias" value="generic_patient_value_filter"/>
+                                  </include>
+                            ))
+                        </otherwise>
+                    </choose>
+                </foreach>
+            </foreach>
+        </if>
+        <if test="studyViewFilterContext.genericAssaySelectionFilters != null and !studyViewFilterContext.genericAssaySelectionFilters.isEmpty()">
+            <foreach item="selectionFilter" collection="studyViewFilterContext.genericAssaySelectionFilters">
+                <foreach item="selectionGroup" collection="selectionFilter.values">
+                    AND EXISTS (
+                        SELECT 1
+                        FROM generic_assay_data_derived generic_selection
+                        WHERE generic_selection.profile_type = #{selectionFilter.profileType}
+                          AND generic_selection.datatype != 'LIMIT-VALUE'
+                          <choose>
+                              <when test="selectionFilter.patientLevel">
+                                  AND generic_selection.patient_unique_id = base_sample.patient_unique_id
+                              </when>
+                              <otherwise>
+                                  AND generic_selection.sample_unique_id = base_sample.sample_unique_id
+                              </otherwise>
+                          </choose>
+                          AND
+                          <foreach item="selectionValue" collection="selectionGroup" open="(" separator=" OR " close=")">
+                              (generic_selection.entity_stable_id = #{selectionValue.stableId}
+                              AND
+                              <choose>
+                                  <when test="selectionValue.value == 'NA'">
+                                      <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.isAttributeValueNA">
+                                          <property name="attribute_value" value="generic_selection.value"/>
+                                      </include>
+                                  </when>
+                                  <otherwise>
+                                      LOWER(TRIM(generic_selection.value)) = LOWER(TRIM(#{selectionValue.value}))
+                                  </otherwise>
+                              </choose>)
+                          </foreach>
+                    )
+                </foreach>
+            </foreach>
+        </if>
         <if test="studyViewFilterContext.clinicalDataFilters != null and !studyViewFilterContext.clinicalDataFilters.isEmpty()">
             <foreach item="clinicalDataFilter" collection="studyViewFilterContext.clinicalDataFilters">
                 AND (
@@ -473,6 +569,26 @@
                     AND CAST(REGEXP_REPLACE(numerical_genomic_filter.alteration_value, '^[&lt;>]=?', '') AS DOUBLE) &lt;= #{filterValue.end}
                 </if>
             </when>
+        </choose>
+    </sql>
+
+    <sql id="genericAssayValueMatches">
+        <choose>
+            <when test="filterValue.value != null">
+                AND LOWER(TRIM(${generic_alias}.value)) = LOWER(TRIM(#{filterValue.value}))
+            </when>
+            <otherwise>
+                AND ${generic_alias}.value REGEXP '^[&lt;>]?=?[-+]?[0-9]*[.]?[0-9]+$'
+                <if test="filterValue.start != null and filterValue.start == filterValue.end">
+                    AND ABS(CAST(REGEXP_REPLACE(${generic_alias}.value, '^[&lt;>]=?', '') AS DOUBLE) - #{filterValue.start}) &lt; 0.00000000001
+                </if>
+                <if test="filterValue.start != null and filterValue.start != filterValue.end">
+                    AND CAST(REGEXP_REPLACE(${generic_alias}.value, '^[&lt;>]=?', '') AS DOUBLE) &gt; #{filterValue.start}
+                </if>
+                <if test="filterValue.end != null and filterValue.start != filterValue.end">
+                    AND CAST(REGEXP_REPLACE(${generic_alias}.value, '^[&lt;>]=?', '') AS DOUBLE) &lt;= #{filterValue.end}
+                </if>
+            </otherwise>
         </choose>
     </sql>
 

@@ -1,7 +1,7 @@
 package org.cbioportal.infrastructure.repository.starrocks;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -10,8 +10,10 @@ import java.util.Set;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.cbioportal.PortalApplication;
+import org.cbioportal.application.rest.vcolumnstore.ColumnStoreCoExpressionController;
 import org.cbioportal.application.rest.vcolumnstore.ColumnarStoreStudyViewController;
 import org.cbioportal.domain.alteration.repository.AlterationRepository;
+import org.cbioportal.domain.coexpression.repository.CoExpressionRepository;
 import org.cbioportal.domain.generic_assay.repository.GenericAssayRepository;
 import org.cbioportal.domain.genomic_data.repository.GenomicDataRepository;
 import org.cbioportal.domain.sample.Sample;
@@ -19,6 +21,8 @@ import org.cbioportal.domain.studyview.StudyViewFilterContext;
 import org.cbioportal.domain.studyview.StudyViewFilterFactory;
 import org.cbioportal.infrastructure.repository.starrocks.alteration.StarrocksAlterationMapper;
 import org.cbioportal.infrastructure.repository.starrocks.alteration.StarrocksAlterationRepository;
+import org.cbioportal.infrastructure.repository.starrocks.coexpression.StarrocksCoExpressionMapper;
+import org.cbioportal.infrastructure.repository.starrocks.coexpression.StarrocksCoExpressionRepository;
 import org.cbioportal.infrastructure.repository.starrocks.generic_assay.StarrocksGenericAssayMapper;
 import org.cbioportal.infrastructure.repository.starrocks.generic_assay.StarrocksGenericAssayRepository;
 import org.cbioportal.infrastructure.repository.starrocks.genomic_data.StarrocksGenomicDataMapper;
@@ -39,7 +43,12 @@ import org.cbioportal.legacy.model.util.Select;
 import org.cbioportal.legacy.persistence.helper.AlterationFilterHelper;
 import org.cbioportal.legacy.persistence.mybatis.StructuralVariantMapper;
 import org.cbioportal.legacy.web.StructuralVariantController;
+import org.cbioportal.legacy.web.parameter.CoExpressionFilter;
 import org.cbioportal.legacy.web.parameter.DataFilterValue;
+import org.cbioportal.legacy.web.parameter.GenericAssayDataBinFilter;
+import org.cbioportal.legacy.web.parameter.GenericAssayDataFilter;
+import org.cbioportal.legacy.web.parameter.GenericAssaySelectionFilter;
+import org.cbioportal.legacy.web.parameter.GenericAssaySelectionValue;
 import org.cbioportal.legacy.web.parameter.GenomicDataBinFilter;
 import org.cbioportal.legacy.web.parameter.GenomicDataCountFilter;
 import org.cbioportal.legacy.web.parameter.GenomicDataFilter;
@@ -72,6 +81,8 @@ class StarrocksGenomicAggregateMapperTest {
         StarrocksGenomicDataMapper genomic = session.getMapper(StarrocksGenomicDataMapper.class);
         StarrocksGenericAssayMapper genericAssay =
             session.getMapper(StarrocksGenericAssayMapper.class);
+        StarrocksCoExpressionMapper coExpression =
+            session.getMapper(StarrocksCoExpressionMapper.class);
         StarrocksSampleMapper samples = session.getMapper(StarrocksSampleMapper.class);
         StructuralVariantMapper structuralVariants =
             session.getMapper(StructuralVariantMapper.class);
@@ -144,8 +155,10 @@ class StarrocksGenomicAggregateMapperTest {
         assertThat(alteration.getAllMolecularProfiles()).hasSize(12);
 
         assertGenomicStatements(genomic, studyA);
-        assertMolecularProfileStatements(genericAssay, studyA);
+        assertGenericAssayStatements(genericAssay, studyA);
+        assertCoExpressionStatements(coExpression);
         assertGenomicStudyViewFilters(samples);
+        assertGenericAssayStudyViewFilters(samples);
         assertStructuralVariantStatements(structuralVariants);
       }
       assertApplicationContracts(cluster);
@@ -163,7 +176,7 @@ class StarrocksGenomicAggregateMapperTest {
     expression.setProfileType("mrna");
     assertThat(genomic.getGenomicDataBinCounts(studyA, List.of(expression)))
         .extracting(count -> count.getValue() + ":" + count.getCount())
-        .containsExactly("1.2:1", "NA:3");
+        .containsExactly("1.2:1", "2.2:1", "3.2:1", "4.2:1", "NA:0");
 
     GenomicDataFilter cna = new GenomicDataFilter("TP53", "gistic");
     assertThat(genomic.getCNACounts(studyA, List.of(cna)))
@@ -203,12 +216,94 @@ class StarrocksGenomicAggregateMapperTest {
             org.assertj.core.groups.Tuple.tuple("NOT_PROFILED", 0));
   }
 
-  private static void assertMolecularProfileStatements(
+  private static void assertGenericAssayStatements(
       StarrocksGenericAssayMapper mapper, StudyViewFilterContext studyA) {
     assertThat(mapper.getGenericAssayProfiles()).hasSize(4);
     assertThat(mapper.getFilteredMolecularProfilesByAlterationType(studyA, "MUTATION_EXTENDED"))
         .extracting(MolecularProfile::getStableId)
         .containsExactly("sr_study_a_mutations");
+
+    StarrocksGenericAssayRepository repository = new StarrocksGenericAssayRepository(mapper);
+    GenericAssayDataFilter response = genericAssayFilter("GA_NUMERIC", "response");
+    assertThat(repository.getGenericAssayDataCounts(studyA, List.of(response)))
+        .singleElement()
+        .satisfies(
+            item ->
+                assertThat(item.getCounts())
+                    .extracting(count -> count.getValue() + ":" + count.getCount())
+                    .containsExactly("0.1:1", "0.5:1", "0.9:1", "NA:1"));
+
+    assertThat(repository.getGenericAssayDataCountsByProfileType(studyA, "biomarker"))
+        .singleElement()
+        .satisfies(
+            item ->
+                assertThat(item.getCounts())
+                    .extracting(count -> count.getValue() + ":" + count.getCount())
+                    .containsExactly("HIGH:1", "LOW:1", "NA:1"));
+    GenericAssayDataFilter absent = genericAssayFilter("GA_CATEGORY", "response");
+    assertThat(repository.getGenericAssayDataCounts(studyA, List.of(absent)))
+        .singleElement()
+        .satisfies(
+            item ->
+                assertThat(item.getCounts())
+                    .extracting(count -> count.getValue() + ":" + count.getCount())
+                    .containsExactly("NA:4"));
+    GenericAssayDataBinFilter responseBins = new GenericAssayDataBinFilter();
+    responseBins.setStableId("GA_NUMERIC");
+    responseBins.setProfileType("response");
+    assertThat(repository.getGenericAssayDataBinCounts(studyA, List.of(responseBins)))
+        .extracting(
+            count -> count.getAttributeId() + ":" + count.getValue() + ":" + count.getCount())
+        .containsExactly(
+            "GA_NUMERICresponse:0.1:1",
+            "GA_NUMERICresponse:0.5:1",
+            "GA_NUMERICresponse:0.9:1",
+            "GA_NUMERICresponse:NA:1");
+    assertThat(repository.getGenericAssayStableIdsByProfileIds(List.of("sr_study_a_response")))
+        .containsExactly("GA_NUMERIC");
+    assertThat(repository.getGenericAssayMetaByStableIds(List.of("GA_NUMERIC")))
+        .singleElement()
+        .satisfies(
+            meta ->
+                assertThat(meta.getGenericEntityMetaProperties())
+                    .containsEntry("UNIT", "score")
+                    .containsEntry("DATATYPE", "NUMBER"));
+    assertThat(repository.getGenericAssayMetaByProfileIds(List.of("sr_study_a_biomarker"), null))
+        .singleElement()
+        .satisfies(meta -> assertThat(meta.getStableId()).isEqualTo("GA_CATEGORY"));
+  }
+
+  private static void assertCoExpressionStatements(StarrocksCoExpressionMapper mapper) {
+    StarrocksCoExpressionRepository repository = new StarrocksCoExpressionRepository(mapper);
+    assertThat(
+            repository.getCoExpressions(
+                "sr_study_a", "mrna", "sr_study_a", "mrna", "TP53", null, 0.8))
+        .satisfiesExactly(
+            result -> {
+              assertThat(result.getEntrezGeneId()).isEqualTo(673);
+              assertThat(result.getSpearmansCorrelation()).isNull();
+            },
+            result -> {
+              assertThat(result.getEntrezGeneId()).isEqualTo(1956);
+              assertThat(result.getSpearmansCorrelation())
+                  .isCloseTo(0.9486832980505138, within(1e-12));
+            });
+    assertThat(
+            repository.getCoExpressions(
+                "sr_study_a",
+                "mrna",
+                "sr_study_a",
+                "mrna",
+                "TP53",
+                List.of("sr_study_a_SA1", "sr_study_a_SA2"),
+                0.8))
+        .extracting(result -> result.getEntrezGeneId() + ":" + result.getNumSamples())
+        .containsExactly("673:2", "1956:2");
+    assertThat(
+            repository.getCoExpressions(
+                "sr_study_a", "mrna", "sr_study_a", "mrna", "TP53", null, 1.1))
+        .extracting(result -> result.getEntrezGeneId() + ":" + result.getSpearmansCorrelation())
+        .containsExactly("673:null");
   }
 
   private static void assertGenomicStudyViewFilters(StarrocksSampleMapper samples) {
@@ -270,6 +365,37 @@ class StarrocksGenomicAggregateMapperTest {
     assertSampleIds(samples, structuralVariant);
   }
 
+  private static void assertGenericAssayStudyViewFilters(StarrocksSampleMapper samples) {
+    StudyViewFilter numerical = studyFilter("sr_study_a");
+    GenericAssayDataFilter response = genericAssayFilter("GA_NUMERIC", "response");
+    response.setValues(List.of(new DataFilterValue(new BigDecimal("0.4"), new BigDecimal("0.8"))));
+    numerical.setGenericAssayDataFilters(List.of(response));
+    assertSampleIds(samples, numerical, "SA2");
+
+    StudyViewFilter missing = studyFilter("sr_study_a");
+    GenericAssayDataFilter missingResponse = genericAssayFilter("GA_NUMERIC", "response");
+    missingResponse.setValues(List.of(new DataFilterValue("NA")));
+    missing.setGenericAssayDataFilters(List.of(missingResponse));
+    assertSampleIds(samples, missing, "SA3");
+
+    StudyViewFilter patientLevel = studyFilter("sr_study_a");
+    GenericAssayDataFilter biomarker = genericAssayFilter("GA_CATEGORY", "biomarker");
+    biomarker.setValues(List.of(new DataFilterValue("LOW")));
+    patientLevel.setGenericAssayDataFilters(List.of(biomarker));
+    assertSampleIds(samples, patientLevel, "SA1", "SA2");
+
+    GenericAssaySelectionValue high = new GenericAssaySelectionValue();
+    high.setStableId("GA_CATEGORY");
+    high.setValue("HIGH");
+    GenericAssaySelectionFilter selection = new GenericAssaySelectionFilter();
+    selection.setProfileType("biomarker");
+    selection.setPatientLevel(true);
+    selection.setValues(List.of(List.of(high)));
+    StudyViewFilter selected = studyFilter("sr_study_a");
+    selected.setGenericAssaySelectionFilters(List.of(selection));
+    assertSampleIds(samples, selected, "SA3");
+  }
+
   private static void assertStructuralVariantStatements(StructuralVariantMapper mapper) {
     StructuralVariantQuery query =
         new StructuralVariantQuery(
@@ -317,13 +443,33 @@ class StarrocksGenomicAggregateMapperTest {
           .isInstanceOf(StarrocksGenomicDataRepository.class);
       assertThat(context.getBean(GenericAssayRepository.class))
           .isInstanceOf(StarrocksGenericAssayRepository.class);
-      assertThatThrownBy(
-              () ->
-                  context
-                      .getBean(GenericAssayRepository.class)
-                      .getGenericAssayMetaByStableIds(List.of("score")))
-          .isInstanceOf(StarrocksDomainNotImplementedException.class)
-          .hasMessageContaining("getGenericAssayMetaByStableIds");
+      assertThat(context.getBean(CoExpressionRepository.class))
+          .isInstanceOf(StarrocksCoExpressionRepository.class);
+      assertThat(
+              context
+                  .getBean(GenericAssayRepository.class)
+                  .getGenericAssayMetaByStableIds(List.of("GA_NUMERIC")))
+          .singleElement()
+          .satisfies(meta -> assertThat(meta.getEntityType()).isEqualTo("GENERIC_ASSAY"));
+
+      CoExpressionFilter coExpressionFilter = new CoExpressionFilter();
+      coExpressionFilter.setEntrezGeneId(7157);
+      coExpressionFilter.setSampleIds(List.of("SA1", "SA2", "SA3", "SA4"));
+      assertThat(
+              context
+                  .getBean(ColumnStoreCoExpressionController.class)
+                  .fetchCoExpressions("sr_study_a_mrna", "sr_study_a_mrna", coExpressionFilter, 0.8)
+                  .getBody())
+          .satisfiesExactly(
+              result -> {
+                assertThat(result.getGeneticEntityId()).isEqualTo("673");
+                assertThat(result.getSpearmansCorrelation()).isNull();
+              },
+              result -> {
+                assertThat(result.getGeneticEntityId()).isEqualTo("1956");
+                assertThat(result.getSpearmansCorrelation().doubleValue())
+                    .isCloseTo(0.9486832980505138, within(1e-12));
+              });
 
       ColumnarStoreStudyViewController controller =
           context.getBean(ColumnarStoreStudyViewController.class);
@@ -424,6 +570,10 @@ class StarrocksGenomicAggregateMapperTest {
     filter.setCategorization(option);
     filter.setValues(List.of(List.of(new DataFilterValue(value))));
     return filter;
+  }
+
+  private static GenericAssayDataFilter genericAssayFilter(String stableId, String profileType) {
+    return new GenericAssayDataFilter(stableId, profileType);
   }
 
   private static void assertSampleIds(

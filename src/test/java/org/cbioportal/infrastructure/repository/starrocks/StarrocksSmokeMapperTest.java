@@ -34,6 +34,8 @@ import org.cbioportal.infrastructure.repository.starrocks.cancerstudy.StarrocksC
 import org.cbioportal.infrastructure.repository.starrocks.clinical_attributes.StarrocksClinicalAttributesRepository;
 import org.cbioportal.infrastructure.repository.starrocks.clinical_data.StarrocksClinicalDataRepository;
 import org.cbioportal.infrastructure.repository.starrocks.clinical_event.StarrocksClinicalEventRepository;
+import org.cbioportal.infrastructure.repository.starrocks.coexpression.StarrocksCoExpressionRepository;
+import org.cbioportal.infrastructure.repository.starrocks.generic_assay.StarrocksGenericAssayRepository;
 import org.cbioportal.infrastructure.repository.starrocks.patient.StarrocksPatientRepository;
 import org.cbioportal.infrastructure.repository.starrocks.sample.StarrocksSampleRepository;
 import org.cbioportal.infrastructure.repository.starrocks.treatment.StarrocksTreatmentRepository;
@@ -108,6 +110,10 @@ class StarrocksSmokeMapperTest {
             .isInstanceOf(StarrocksClinicalDataRepository.class);
         assertThat(context.getBean(ClinicalEventRepository.class))
             .isInstanceOf(StarrocksClinicalEventRepository.class);
+        assertThat(context.getBean(CoExpressionRepository.class))
+            .isInstanceOf(StarrocksCoExpressionRepository.class);
+        assertThat(context.getBean(GenericAssayRepository.class))
+            .isInstanceOf(StarrocksGenericAssayRepository.class);
         assertThat(context.getBean(PatientRepository.class))
             .isInstanceOf(StarrocksPatientRepository.class);
         assertThat(context.getBean(SampleRepository.class))

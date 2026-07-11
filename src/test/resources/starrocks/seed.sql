@@ -86,14 +86,14 @@ INSERT INTO genetic_profile VALUES
   (102, 'sr_study_a_gistic', 1, 'COPY_NUMBER_ALTERATION', NULL, 'DISCRETE', 'CNA', 'Fixture CNA', 1, NULL, '2', 0),
   (103, 'sr_study_a_mrna', 1, 'MRNA_EXPRESSION', NULL, 'CONTINUOUS', 'mRNA', 'Fixture mRNA', 1, NULL, '3', 0),
   (104, 'sr_study_a_structural_variants', 1, 'STRUCTURAL_VARIANT', NULL, 'SV', 'Structural variants', 'Fixture SV', 1, NULL, '4', 0),
-  (105, 'sr_study_a_response', 1, 'GENERIC_ASSAY', 'TREATMENT_RESPONSE', 'CONTINUOUS', 'Response score', 'Numeric generic assay', 1, NULL, '5', 0),
-  (106, 'sr_study_a_biomarker', 1, 'GENERIC_ASSAY', 'BIOMARKER', 'CATEGORICAL', 'Biomarker', 'Categorical generic assay', 1, NULL, '6', 0),
+  (105, 'sr_study_a_response', 1, 'GENERIC_ASSAY', 'TREATMENT_RESPONSE', 'LIMIT-VALUE', 'Response score', 'Numeric generic assay', 1, NULL, '5', 0),
+  (106, 'sr_study_a_biomarker', 1, 'GENERIC_ASSAY', 'BIOMARKER', 'CATEGORICAL', 'Biomarker', 'Categorical generic assay', 1, NULL, '6', 1),
   (201, 'sr_study_b_mutations', 2, 'MUTATION_EXTENDED', NULL, 'MAF', 'Mutations', 'Fixture mutations', 1, NULL, '1', 0),
   (202, 'sr_study_b_gistic', 2, 'COPY_NUMBER_ALTERATION', NULL, 'DISCRETE', 'CNA', 'Fixture CNA', 1, NULL, '2', 0),
   (203, 'sr_study_b_mrna', 2, 'MRNA_EXPRESSION', NULL, 'CONTINUOUS', 'mRNA', 'Fixture mRNA', 1, NULL, '3', 0),
   (204, 'sr_study_b_structural_variants', 2, 'STRUCTURAL_VARIANT', NULL, 'SV', 'Structural variants', 'Fixture SV', 1, NULL, '4', 0),
-  (205, 'sr_study_b_response', 2, 'GENERIC_ASSAY', 'TREATMENT_RESPONSE', 'CONTINUOUS', 'Response score', 'Numeric generic assay', 1, NULL, '5', 0),
-  (206, 'sr_study_b_biomarker', 2, 'GENERIC_ASSAY', 'BIOMARKER', 'CATEGORICAL', 'Biomarker', 'Categorical generic assay', 1, NULL, '6', 0);
+  (205, 'sr_study_b_response', 2, 'GENERIC_ASSAY', 'TREATMENT_RESPONSE', 'LIMIT-VALUE', 'Response score', 'Numeric generic assay', 1, NULL, '5', 0),
+  (206, 'sr_study_b_biomarker', 2, 'GENERIC_ASSAY', 'BIOMARKER', 'CATEGORICAL', 'Biomarker', 'Categorical generic assay', 1, NULL, '6', 1);
 
 INSERT INTO genetic_profile_samples VALUES
   (101, '1001,1002,1003,1004'), (102, '1001,1002,1003,1004'), (103, '1001,1002,1003,1004'),
@@ -322,14 +322,35 @@ INSERT INTO genetic_alteration_derived VALUES
   ('sr_study_a_SA1','sr_study_a','TP53','gistic','2'),
   ('sr_study_a_SA2','sr_study_a','TP53','gistic','0'),
   ('sr_study_a_SA1','sr_study_a','TP53','mrna','1.2'),
+  ('sr_study_a_SA2','sr_study_a','TP53','mrna','2.2'),
+  ('sr_study_a_SA3','sr_study_a','TP53','mrna','3.2'),
+  ('sr_study_a_SA4','sr_study_a','TP53','mrna','4.2'),
+  ('sr_study_a_SA1','sr_study_a','EGFR','mrna','10'),
+  ('sr_study_a_SA2','sr_study_a','EGFR','mrna','20'),
+  ('sr_study_a_SA3','sr_study_a','EGFR','mrna','20'),
+  ('sr_study_a_SA4','sr_study_a','EGFR','mrna','4e1'),
+  ('sr_study_a_SA1','sr_study_a','BRAF','mrna','5'),
+  ('sr_study_a_SA2','sr_study_a','BRAF','mrna','5'),
+  ('sr_study_a_SA3','sr_study_a','BRAF','mrna','5'),
+  ('sr_study_a_SA4','sr_study_a','BRAF','mrna','5'),
   ('sr_study_b_SB1','sr_study_b','BRAF','gistic','1'),
   ('sr_study_b_SB1','sr_study_b','TP53','mrna','2.0');
 
 INSERT INTO generic_assay_data_derived VALUES
-  ('sr_study_a_SA1','sr_study_a_PA1','1001','0.1','TREATMENT_RESPONSE','sr_study_a_response','GA_NUMERIC','CONTINUOUS',0,'response'),
-  ('sr_study_a_SA1','sr_study_a_PA1','1002','LOW','BIOMARKER','sr_study_a_biomarker','GA_CATEGORY','CATEGORICAL',0,'biomarker'),
-  ('sr_study_b_SB1','sr_study_b_PB1','1001','0.3','TREATMENT_RESPONSE','sr_study_b_response','GA_NUMERIC','CONTINUOUS',0,'response'),
-  ('sr_study_b_SB1','sr_study_b_PB1','1002','HIGH','BIOMARKER','sr_study_b_biomarker','GA_CATEGORY','CATEGORICAL',0,'biomarker');
+  ('sr_study_a_SA1','sr_study_a_PA1','1001','0.1','TREATMENT_RESPONSE','sr_study_a_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_a_SA2','sr_study_a_PA1','1001','0.5','TREATMENT_RESPONSE','sr_study_a_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_a_SA3','sr_study_a_PA2','1001','NA','TREATMENT_RESPONSE','sr_study_a_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_a_SA4','sr_study_a_PA3','1001','0.9','TREATMENT_RESPONSE','sr_study_a_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_a_SA1','sr_study_a_PA1','1002','LOW','BIOMARKER','sr_study_a_biomarker','GA_CATEGORY','CATEGORICAL',1,'biomarker'),
+  ('sr_study_a_SA3','sr_study_a_PA2','1002','HIGH','BIOMARKER','sr_study_a_biomarker','GA_CATEGORY','CATEGORICAL',1,'biomarker'),
+  ('sr_study_a_SA4','sr_study_a_PA3','1002','NA','BIOMARKER','sr_study_a_biomarker','GA_CATEGORY','CATEGORICAL',1,'biomarker'),
+  ('sr_study_b_SB1','sr_study_b_PB1','1001','0.3','TREATMENT_RESPONSE','sr_study_b_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_b_SB2','sr_study_b_PB1','1001','0.4','TREATMENT_RESPONSE','sr_study_b_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_b_SB3','sr_study_b_PB2','1001','0.6','TREATMENT_RESPONSE','sr_study_b_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_b_SB4','sr_study_b_PB3','1001','NA','TREATMENT_RESPONSE','sr_study_b_response','GA_NUMERIC','LIMIT-VALUE',0,'response'),
+  ('sr_study_b_SB1','sr_study_b_PB1','1002','HIGH','BIOMARKER','sr_study_b_biomarker','GA_CATEGORY','CATEGORICAL',1,'biomarker'),
+  ('sr_study_b_SB3','sr_study_b_PB2','1002','LOW','BIOMARKER','sr_study_b_biomarker','GA_CATEGORY','CATEGORICAL',1,'biomarker'),
+  ('sr_study_b_SB4','sr_study_b_PB3','1002','NA','BIOMARKER','sr_study_b_biomarker','GA_CATEGORY','CATEGORICAL',1,'biomarker');
 
 INSERT INTO mutation_derived
 -- fixture-rows: 5

@@ -54,7 +54,7 @@ class StarrocksSchemaContractTest {
           assertThat(tableExists(statement, table)).as(table).isTrue();
         }
         assertThat(fixtureCounts(statement)).isEqualTo(firstLoad);
-        assertThat(firstLoad).isEqualTo(new FixtureCounts(2, 6, 8, 5, 3, 2, 6, 4, 1, 3));
+        assertThat(firstLoad).isEqualTo(new FixtureCounts(2, 6, 8, 5, 3, 2, 6, 14, 1, 3));
         assertThat(queryCount(statement, "clinical_sample", "attr_id = 'SPECIAL'")).isEqualTo(6);
         assertThat(
                 queryCount(statement, "clinical_sample", "attr_id = 'SPECIAL' AND attr_value = ''"))
@@ -74,7 +74,7 @@ class StarrocksSchemaContractTest {
                 queryCount(
                     statement,
                     "genetic_profile",
-                    "generic_assay_type IS NOT NULL AND datatype = 'CONTINUOUS'"))
+                    "generic_assay_type IS NOT NULL AND datatype = 'LIMIT-VALUE'"))
             .isEqualTo(2);
         assertThat(queryCount(statement, "genomic_event_derived", "off_panel = 1")).isEqualTo(1);
       }
