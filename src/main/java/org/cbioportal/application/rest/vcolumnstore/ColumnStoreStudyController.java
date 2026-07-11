@@ -118,10 +118,10 @@ public class ColumnStoreStudyController {
 
     var studies = getCancerStudyMetadataUseCase.execute(projection, sortAndSearchCriteria);
 
-    // Pagination should be handled at the DB layer, but currently our query is not
-    // setup to handle this with authorization
+    // Apply pagination after authorization filtering so page contents never include inaccessible
+    // studies.
     if (pageSize != null) {
-      studies = studies.stream().limit(pageSize).toList();
+      studies = studies.stream().skip(sortAndSearchCriteria.offset()).limit(pageSize).toList();
     }
     var headers = new HttpHeaders();
     if (projection == ProjectionType.META) {

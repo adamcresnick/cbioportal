@@ -51,11 +51,11 @@ INSERT INTO patient VALUES
 
 INSERT INTO sample VALUES
   (1001, 'SA1', 'Primary Solid Tumor', 101),
-  (1002, 'SA2', 'Metastasis', 101),
+  (1002, 'SA2', 'Metastatic', 101),
   (1003, 'SA3', 'Primary Solid Tumor', 102),
   (1004, 'SA4', 'Primary Solid Tumor', 103),
   (2001, 'SB1', 'Primary Solid Tumor', 201),
-  (2002, 'SB2', 'Metastasis', 201),
+  (2002, 'SB2', 'Metastatic', 201),
   (2003, 'SB3', 'Primary Solid Tumor', 202),
   (2004, 'SB4', 'Primary Solid Tumor', 203);
 
@@ -210,11 +210,11 @@ INSERT INTO resource_sample VALUES (1001,'fixture-sample','https://example.org/s
 
 INSERT INTO sample_derived VALUES
   ('sr_study_a_SA1','c3Jfc3R1ZHlfYV9TQTE=','SA1','sr_study_a_PA1','c3Jfc3R1ZHlfYV9QQTE=','PA1','sr_study_a',1001,101,'Primary Solid Tumor',1,1),
-  ('sr_study_a_SA2','c3Jfc3R1ZHlfYV9TQTI=','SA2','sr_study_a_PA1','c3Jfc3R1ZHlfYV9QQTE=','PA1','sr_study_a',1002,101,'Metastasis',1,0),
+  ('sr_study_a_SA2','c3Jfc3R1ZHlfYV9TQTI=','SA2','sr_study_a_PA1','c3Jfc3R1ZHlfYV9QQTE=','PA1','sr_study_a',1002,101,'Metastatic',1,0),
   ('sr_study_a_SA3','c3Jfc3R1ZHlfYV9TQTM=','SA3','sr_study_a_PA2','c3Jfc3R1ZHlfYV9QQTI=','PA2','sr_study_a',1003,102,'Primary Solid Tumor',1,0),
   ('sr_study_a_SA4','c3Jfc3R1ZHlfYV9TTQQ=','SA4','sr_study_a_PA3','c3Jfc3R1ZHlfYV9QQTM=','PA3','sr_study_a',1004,103,'Primary Solid Tumor',1,0),
   ('sr_study_b_SB1','c3Jfc3R1ZHlfYl9TQjE=','SB1','sr_study_b_PB1','c3Jfc3R1ZHlfYl9QQjE=','PB1','sr_study_b',2001,201,'Primary Solid Tumor',1,1),
-  ('sr_study_b_SB2','c3Jfc3R1ZHlfYl9TQjI=','SB2','sr_study_b_PB1','c3Jfc3R1ZHlfYl9QQjE=','PB1','sr_study_b',2002,201,'Metastasis',1,0),
+  ('sr_study_b_SB2','c3Jfc3R1ZHlfYl9TQjI=','SB2','sr_study_b_PB1','c3Jfc3R1ZHlfYl9QQjE=','PB1','sr_study_b',2002,201,'Metastatic',1,0),
   ('sr_study_b_SB3','c3Jfc3R1ZHlfYl9TQjM=','SB3','sr_study_b_PB2','c3Jfc3R1ZHlfYl9QQjI=','PB2','sr_study_b',2003,202,'Primary Solid Tumor',1,0),
   ('sr_study_b_SB4','c3Jfc3R1ZHlfYl9TQjQ=','SB4','sr_study_b_PB3','c3Jfc3R1ZHlfYl9QQjM=','PB3','sr_study_b',2004,203,'Primary Solid Tumor',1,0);
 
@@ -268,7 +268,8 @@ INSERT INTO genomic_event_derived VALUES
   ('sr_study_b_SB1','BRAF',673,'TEST_PANEL','sr_study_b','sr_study_b_mutations','mutation','V600E','Missense_Mutation','Somatic','Putative_Driver','OncoKB','Tier1','Curated',NULL,'','','sr_study_b_PB1',1),
   ('sr_study_b_SB2','TP53',7157,'TEST_PANEL','sr_study_b','sr_study_b_mutations','mutation','R175H','Missense_Mutation','Somatic','','','','',NULL,'','','sr_study_b_PB1',0),
   ('sr_study_a_SA1','TP53',7157,'TEST_PANEL','sr_study_a','sr_study_a_gistic','cna','NA','NA','NA','','','','',2,'17p13.1','','sr_study_a_PA1',0),
-  ('sr_study_a_SA1','TP53',7157,'TEST_PANEL','sr_study_a','sr_study_a_structural_variants','sv','NA','NA','NA','','','','',NULL,'','TP53-EGFR','sr_study_a_PA1',0);
+  ('sr_study_a_SA1','TP53',7157,'TEST_PANEL','sr_study_a','sr_study_a_structural_variants','structural_variant','NA','NA','NA','','','','',NULL,'','TP53-EGFR','sr_study_a_PA1',0),
+  ('sr_study_b_SB1','BRAF',673,'TEST_PANEL','sr_study_b','sr_study_b_structural_variants','structural_variant','NA','NA','NA','','','','',NULL,'','BRAF-TP53','sr_study_b_PB1',0);
 
 INSERT INTO genetic_alteration_derived VALUES
   ('sr_study_a_SA1','sr_study_a','TP53','gistic','2'),

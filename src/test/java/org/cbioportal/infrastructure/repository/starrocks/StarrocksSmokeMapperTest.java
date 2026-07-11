@@ -30,6 +30,9 @@ import org.cbioportal.infrastructure.repository.clickhouse.mutation.ClickhouseMu
 import org.cbioportal.infrastructure.repository.clickhouse.patient.ClickhousePatientRepository;
 import org.cbioportal.infrastructure.repository.clickhouse.sample.ClickhouseSampleRepository;
 import org.cbioportal.infrastructure.repository.clickhouse.treatment.ClickhouseTreatmentRepository;
+import org.cbioportal.infrastructure.repository.starrocks.cancerstudy.StarrocksCancerStudyRepository;
+import org.cbioportal.infrastructure.repository.starrocks.patient.StarrocksPatientRepository;
+import org.cbioportal.infrastructure.repository.starrocks.sample.StarrocksSampleRepository;
 import org.cbioportal.legacy.persistence.mybatisclickhouse.StudyViewMyBatisRepository;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionFactoryBean;
@@ -93,6 +96,12 @@ class StarrocksSmokeMapperTest {
         assertSingleDomainRepository(context, PatientRepository.class);
         assertSingleDomainRepository(context, SampleRepository.class);
         assertSingleDomainRepository(context, TreatmentRepository.class);
+        assertThat(context.getBean(CancerStudyRepository.class))
+            .isInstanceOf(StarrocksCancerStudyRepository.class);
+        assertThat(context.getBean(PatientRepository.class))
+            .isInstanceOf(StarrocksPatientRepository.class);
+        assertThat(context.getBean(SampleRepository.class))
+            .isInstanceOf(StarrocksSampleRepository.class);
       }
     }
   }
