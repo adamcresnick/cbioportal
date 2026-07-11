@@ -12,9 +12,8 @@ public final class StarrocksStudyViewFilterSupport {
 
   private StarrocksStudyViewFilterSupport() {}
 
-  public static void requireBaseFilterFamilies(StudyViewFilterContext context) {
+  public static void requireImplementedFilterFamilies(StudyViewFilterContext context) {
     List<String> unsupported = new ArrayList<>();
-    addIfPresent(unsupported, "clinicalDataFilters", context.clinicalDataFilters());
     addIfPresent(unsupported, "geneFilters", context.geneFilters());
     addIfPresent(unsupported, "structuralVariantFilters", context.structuralVariantFilters());
     addIfPresent(unsupported, "genomicDataFilters", context.genomicDataFilters());
@@ -22,14 +21,11 @@ public final class StarrocksStudyViewFilterSupport {
     addIfPresent(
         unsupported, "genericAssaySelectionFilters", context.genericAssaySelectionFilters());
     addIfPresent(unsupported, "customDataFilters", context.customDataFilters());
-    addIfPresent(unsupported, "clinicalEventFilters", context.clinicalEventFilters());
     addIfPresent(unsupported, "mutationDataFilters", context.mutationDataFilters());
     addIfPresent(unsupported, "customSampleIdentifiers", context.customSampleIdentifiers());
-    addIfPresent(unsupported, "sampleTreatmentFilters", context.sampleTreatmentFilters());
     addIfPresent(unsupported, "sampleTreatmentGroupFilters", context.sampleTreatmentGroupFilters());
     addIfPresent(
         unsupported, "sampleTreatmentTargetFilters", context.sampleTreatmentTargetFilters());
-    addIfPresent(unsupported, "patientTreatmentFilters", context.patientTreatmentFilters());
     addIfPresent(
         unsupported, "patientTreatmentGroupFilters", context.patientTreatmentGroupFilters());
     addIfPresent(

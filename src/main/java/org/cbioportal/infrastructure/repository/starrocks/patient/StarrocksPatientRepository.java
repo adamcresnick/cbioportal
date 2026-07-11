@@ -23,14 +23,14 @@ public class StarrocksPatientRepository implements PatientRepository {
 
   @Override
   public int getFilteredPatientCount(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireBaseFilterFamilies(studyViewFilterContext);
+    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getPatientCount(studyViewFilterContext);
   }
 
   @Override
   public List<CaseListDataCount> getCaseListDataCounts(
       StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireBaseFilterFamilies(studyViewFilterContext);
+    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getCaseListDataCounts(studyViewFilterContext);
   }
 }
