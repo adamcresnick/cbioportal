@@ -19,7 +19,7 @@
             cancer_study.public                  AS "${prefix}cancerStudy.publicStudy",
             cancer_study.pmid                    AS "${prefix}cancerStudy.pmid",
             cancer_study.citation                AS "${prefix}cancerStudy.citation",
-            cancer_study.groups                  AS "${prefix}cancerStudy.groups",
+            cancer_study.`groups`                AS "${prefix}cancerStudy.groups",
             cancer_study.status                  AS "${prefix}cancerStudy.status",
             cancer_study.import_date             AS "${prefix}cancerStudy.importDate",
             reference_genome.name                AS "${prefix}cancerStudy.referenceGenome"

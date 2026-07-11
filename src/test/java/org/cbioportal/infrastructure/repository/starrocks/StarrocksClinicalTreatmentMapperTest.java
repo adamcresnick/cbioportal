@@ -1,9 +1,11 @@
 package org.cbioportal.infrastructure.repository.starrocks;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.cbioportal.PortalApplication;
@@ -18,20 +20,33 @@ import org.cbioportal.infrastructure.repository.starrocks.clinical_attributes.St
 import org.cbioportal.infrastructure.repository.starrocks.clinical_data.StarrocksClinicalDataMapper;
 import org.cbioportal.infrastructure.repository.starrocks.clinical_event.StarrocksClinicalEventMapper;
 import org.cbioportal.infrastructure.repository.starrocks.treatment.StarrocksTreatmentMapper;
+import org.cbioportal.legacy.model.ClinicalEvent;
+import org.cbioportal.legacy.model.ClinicalEventData;
 import org.cbioportal.legacy.model.TemporalRelation;
+import org.cbioportal.legacy.persistence.mybatis.ClinicalEventMapper;
+import org.cbioportal.legacy.web.ClinicalEventController;
+import org.cbioportal.legacy.web.SurvivalController;
 import org.cbioportal.legacy.web.parameter.ClinicalDataFilter;
 import org.cbioportal.legacy.web.parameter.ClinicalDataIdentifier;
 import org.cbioportal.legacy.web.parameter.ClinicalDataMultiStudyFilter;
+import org.cbioportal.legacy.web.parameter.ClinicalEventRequest;
+import org.cbioportal.legacy.web.parameter.ClinicalEventRequestIdentifier;
 import org.cbioportal.legacy.web.parameter.DataFilter;
 import org.cbioportal.legacy.web.parameter.DataFilterValue;
+import org.cbioportal.legacy.web.parameter.Direction;
+import org.cbioportal.legacy.web.parameter.OccurrencePosition;
+import org.cbioportal.legacy.web.parameter.PatientIdentifier;
+import org.cbioportal.legacy.web.parameter.Projection;
 import org.cbioportal.legacy.web.parameter.SampleIdentifier;
 import org.cbioportal.legacy.web.parameter.StudyViewFilter;
+import org.cbioportal.legacy.web.parameter.SurvivalRequest;
 import org.cbioportal.legacy.web.parameter.filter.AndedPatientTreatmentFilters;
 import org.cbioportal.legacy.web.parameter.filter.AndedSampleTreatmentFilters;
 import org.cbioportal.legacy.web.parameter.filter.OredPatientTreatmentFilters;
 import org.cbioportal.legacy.web.parameter.filter.OredSampleTreatmentFilters;
 import org.cbioportal.legacy.web.parameter.filter.PatientTreatmentFilter;
 import org.cbioportal.legacy.web.parameter.filter.SampleTreatmentFilter;
+import org.cbioportal.legacy.web.parameter.sort.ClinicalEventSortBy;
 import org.cbioportal.shared.enums.ProjectionType;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionFactoryBean;
@@ -166,6 +181,97 @@ class StarrocksClinicalTreatmentMapperTest {
     }
   }
 
+  private static void assertLegacyTimelineStatements(ClinicalEventMapper timeline) {
+    assertThat(
+            timeline.getPatientClinicalEvent(
+                "sr_study_a", "PA1", "DETAILED", 10, 0, "startDate", "ASC"))
+        .extracting(ClinicalEvent::getClinicalEventId)
+        .containsExactly(10001L, 10002L, 10003L);
+    assertThat(timeline.getMetaPatientClinicalEvent("sr_study_a", "PA1").getTotalCount())
+        .isEqualTo(3);
+    assertThat(timeline.getDataOfClinicalEvents(List.of(10001L, 10002L)))
+        .extracting(data -> data.getKey() + ":" + data.getValue())
+        .containsExactlyInAnyOrder(
+            "SAMPLE_ID:SA1", "AGENT:DrugA", "AGENT:DrugA-duplicate", "STATUS:COMPLETED");
+    assertThat(timeline.getStudyClinicalEvent("sr_study_a", "SUMMARY", 2, 1, "startDate", "ASC"))
+        .extracting(ClinicalEvent::getClinicalEventId)
+        .containsExactly(10002L, 10003L);
+    assertThat(timeline.getMetaClinicalEvent("sr_study_a").getTotalCount()).isEqualTo(3);
+    assertThat(timeline.getSamplesOfPatientsPerEventType(List.of("sr_study_a"), null))
+        .extracting(ClinicalEvent::getEventType)
+        .contains("SPECIMEN", "TREATMENT");
+    assertThat(timeline.getSamplesOfPatientsPerEventType(List.of("sr_study_a"), List.of()))
+        .isEmpty();
+
+    assertThat(
+            timeline.getPatientsDistinctClinicalEventInStudies(
+                List.of("sr_study_a"), List.of("PA1"), List.of()))
+        .extracting(ClinicalEvent::getEventType)
+        .containsExactlyInAnyOrder("SPECIMEN", "TREATMENT");
+    assertThat(
+            timeline.getPatientsDistinctClinicalEventInStudies(
+                List.of("sr_study_a"), List.of(), List.of()))
+        .isEmpty();
+
+    ClinicalEvent specimen = new ClinicalEvent();
+    specimen.setEventType("SPECIMEN");
+    assertThat(timeline.getTimelineEvents(List.of("sr_study_a"), List.of("PA1"), List.of(specimen)))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getPatientId()).isEqualTo("PA1");
+              assertThat(event.getStartDate()).isZero();
+              assertThat(event.getStopDate()).isEqualTo(100);
+            });
+    ClinicalEvent treatmentByAgent = new ClinicalEvent();
+    treatmentByAgent.setEventType("TREATMENT");
+    ClinicalEventData agent = new ClinicalEventData();
+    agent.setKey("AGENT");
+    agent.setValue("DrugA");
+    treatmentByAgent.setAttributes(List.of(agent));
+    assertThat(
+            timeline.getPatientsDistinctClinicalEventInStudies(
+                List.of("sr_study_a"), List.of("PA1"), List.of(treatmentByAgent)))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getEventType()).isEqualTo("TREATMENT"));
+    assertThat(
+            timeline.getTimelineEvents(
+                List.of("sr_study_a"), List.of("PA1"), List.of(treatmentByAgent)))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getStartDate()).isEqualTo(50);
+              assertThat(event.getStopDate()).isEqualTo(75);
+            });
+    assertThat(timeline.getClinicalEventsMeta(List.of("sr_study_a"), List.of("PA1"), List.of()))
+        .extracting(ClinicalEvent::getEventType)
+        .containsExactlyInAnyOrder("specimen", "treatment");
+    assertThat(
+            timeline.getClinicalEventsMeta(
+                List.of("sr_study_a"), List.of("PA1"), List.of(treatmentByAgent)))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getEventType()).isEqualTo("treatment");
+              assertThat(event.getAttributes())
+                  .extracting(data -> data.getKey() + ":" + data.getValue())
+                  .containsExactlyInAnyOrder("agent:druga", "agent:druga-duplicate");
+            });
+    assertThat(timeline.getTimelineEvents(List.of("sr_study_a"), List.of(), List.of())).isEmpty();
+    assertThat(timeline.getClinicalEventsMeta(List.of("sr_study_a"), List.of(), List.of()))
+        .isEmpty();
+
+    assertThat(
+            timeline.getPatientsDistinctClinicalEventInStudies(
+                List.of("sr_study_a", "sr_study_b"), List.of("PA1", "PB1"), List.of()))
+        .hasSize(4);
+    assertThat(
+            timeline.getTimelineEvents(
+                List.of("sr_study_a", "sr_study_b"), List.of("PA1", "PB1"), List.of(specimen)))
+        .extracting(ClinicalEvent::getStudyId)
+        .containsExactlyInAnyOrder("sr_study_a", "sr_study_b");
+  }
+
   private static void assertStudyViewFilters(
       StarrocksClinicalDataMapper clinicalData, StarrocksTreatmentMapper treatments) {
     StudyViewFilter subtype = studyFilter("sr_study_a");
@@ -242,7 +348,7 @@ class StarrocksClinicalTreatmentMapperTest {
         .containsExactly("SA1");
   }
 
-  private static void assertApplicationContracts(StarrocksTestCluster cluster) {
+  private static void assertApplicationContracts(StarrocksTestCluster cluster) throws Exception {
     try (ConfigurableApplicationContext context = applicationContext(cluster)) {
       ColumnStoreClinicalDataController clinicalData =
           context.getBean(ColumnStoreClinicalDataController.class);
@@ -282,7 +388,60 @@ class StarrocksClinicalTreatmentMapperTest {
                 assertThat(treatment.preSamples()).hasSize(1);
                 assertThat(treatment.postSamples()).hasSize(1);
               });
+      assertLegacyTimelineStatements(context.getBean(ClinicalEventMapper.class));
+      assertLegacyClinicalControllers(context);
     }
+  }
+
+  private static void assertLegacyClinicalControllers(ConfigurableApplicationContext context)
+      throws Exception {
+    assertThat(
+            context
+                .getBean(ClinicalEventController.class)
+                .getAllClinicalEventsOfPatientInStudy(
+                    "sr_study_a",
+                    "PA1",
+                    Projection.DETAILED,
+                    10,
+                    0,
+                    ClinicalEventSortBy.startNumberOfDaysSinceDiagnosis,
+                    Direction.ASC)
+                .getBody())
+        .hasSize(3)
+        .allSatisfy(event -> assertThat(event.getAttributes()).isNotEmpty());
+
+    SurvivalRequest survival = new SurvivalRequest();
+    PatientIdentifier patient = new PatientIdentifier();
+    patient.setStudyId("sr_study_a");
+    patient.setPatientId("PA1");
+    survival.setPatientIdentifiers(List.of(patient));
+    survival.setAttributeIdPrefix("TEST_SURVIVAL");
+    survival.setStartEventRequestIdentifier(eventIdentifier("SPECIMEN", OccurrencePosition.FIRST));
+    survival.setEndEventRequestIdentifier(eventIdentifier("TREATMENT", OccurrencePosition.FIRST));
+
+    assertThat(context.getBean(SurvivalController.class).cachedSurvivalData(survival))
+        .hasSize(2)
+        .anySatisfy(
+            data -> {
+              assertThat(data.getAttrId()).isEqualTo("TEST_SURVIVAL_MONTHS");
+              assertThat(Double.parseDouble(data.getAttrValue()))
+                  .isCloseTo(50.0 / 30.4, within(1e-12));
+            })
+        .anySatisfy(
+            data -> {
+              assertThat(data.getAttrId()).isEqualTo("TEST_SURVIVAL_STATUS");
+              assertThat(data.getAttrValue()).isEqualTo("1:EVENT");
+            });
+  }
+
+  private static ClinicalEventRequestIdentifier eventIdentifier(
+      String eventType, OccurrencePosition position) {
+    ClinicalEventRequest event = new ClinicalEventRequest();
+    event.setEventType(eventType);
+    ClinicalEventRequestIdentifier identifier = new ClinicalEventRequestIdentifier();
+    identifier.setClinicalEventRequests(Set.of(event));
+    identifier.setPosition(position);
+    return identifier;
   }
 
   private static ClinicalDataFilter categoricalFilter(String attributeId, String value) {
