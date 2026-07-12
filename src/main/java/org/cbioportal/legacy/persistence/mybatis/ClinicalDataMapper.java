@@ -37,7 +37,7 @@ public interface ClinicalDataMapper {
       Integer limit,
       Integer offset,
       String searchTerm,
-      String sortByAttrId,
+      String sortBy,
       Boolean sortAttrIsNumber,
       Boolean sortIsPatientAttr,
       String direction);

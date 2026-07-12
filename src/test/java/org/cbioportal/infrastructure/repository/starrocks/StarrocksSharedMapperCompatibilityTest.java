@@ -442,7 +442,7 @@ class StarrocksSharedMapperCompatibilityTest {
             });
   }
 
-  private static SqlSessionFactory sessionFactory(StarrocksTestCluster cluster) throws Exception {
+  static SqlSessionFactory sessionFactory(StarrocksTestCluster cluster) throws Exception {
     DriverManagerDataSource dataSource = new DriverManagerDataSource();
     dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
     dataSource.setUrl(cluster.jdbcUrl());
