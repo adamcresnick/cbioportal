@@ -54,7 +54,8 @@ public class OAuth2SecurityConfig {
         .authorizeHttpRequests(
             authorize ->
                 authorize
-                    .requestMatchers("/api/health", LOGIN_URL, "/images/**")
+                    .requestMatchers(
+                        "/api/health", "/api/health/starrocks", LOGIN_URL, "/images/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

@@ -1,0 +1,7 @@
+{
+  "/api/health/starrocks": 500,
+  "/api/studies?projection=SUMMARY": 2000,
+  "/api/studies/sr_study_a/patients/PA1/samples": 2000,
+  "/api/molecular-profiles/sr_study_a_mutations/mutations?sampleListId=sr_study_a_all&entrezGeneId=7157&projection=SUMMARY": 3000,
+  "/api/studies/sr_study_a/patients/PA1/clinical-events": 2000
+}

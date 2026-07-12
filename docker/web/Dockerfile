@@ -35,7 +35,10 @@ RUN cp src/main/resources/application.properties.EXAMPLE src/main/resources/appl
 FROM eclipse-temurin:21-jre
 
 ENV PORTAL_WEB_HOME=/cbioportal-webapp
-RUN mkdir -p $PORTAL_WEB_HOME
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p $PORTAL_WEB_HOME
 COPY --from=build /cbioportal/target/*-exec.jar ${PORTAL_WEB_HOME}/app.jar
 # Shell form so $JAVA_OPTS / $WEBAPP_OPTS are expanded at runtime.
 CMD ["sh", "-c", "java $JAVA_OPTS -jar $PORTAL_WEB_HOME/app.jar $WEBAPP_OPTS"]

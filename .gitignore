@@ -99,6 +99,7 @@ dependency-reduced-pom.xml
 Procfile
 node_modules/
 package.json
+!dev/starrocks/e2e/package.json
 .vscode/
 *.tramp_history
 pom.version.*
@@ -117,3 +118,8 @@ command-audit.md
 
 # Local MCP server config (may hold credentials)
 .mcp.json
+
+# Ephemeral local StarRocks deployment state
+dev/starrocks/.data/
+dev/starrocks/e2e/test-results/
+dev/starrocks/e2e/playwright-report/

@@ -30,6 +30,13 @@
         <!-- write configuration to page so we do not have to load it via service-->
         window.rawServerConfig = [(${propertiesJson})];
 
+        // The pinned frontend records Results View queries even when analytics is disabled.
+        // Provide the standard gtag queue before the frontend bundle initializes tracking.
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = window.gtag || function() {
+            window.dataLayer.push(arguments);
+        };
+
         if (/localdev=true/.test(window.location.href)) {
             localStorage.setItem("localdev", "true");
         }

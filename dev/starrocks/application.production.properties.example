@@ -1,0 +1,15 @@
+columnstore.backend=starrocks
+spring.datasource.url=jdbc:mysql://${STARROCKS_HOST}:${STARROCKS_PORT:9030}/${STARROCKS_DATABASE}?sslMode=VERIFY_IDENTITY
+spring.datasource.username=${PORTAL_DATABASE_USER}
+spring.datasource.password=${PORTAL_DATABASE_PASSWORD}
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.hikari.minimum-idle=${STARROCKS_POOL_MIN:4}
+spring.datasource.hikari.maximum-pool-size=${STARROCKS_POOL_MAX:30}
+spring.datasource.hikari.connection-timeout=${STARROCKS_CONNECTION_TIMEOUT_MS:10000}
+spring.datasource.hikari.validation-timeout=${STARROCKS_VALIDATION_TIMEOUT_MS:5000}
+spring.datasource.hikari.max-lifetime=${STARROCKS_MAX_LIFETIME_MS:1800000}
+starrocks.query-timeout-seconds=${STARROCKS_QUERY_TIMEOUT_SECONDS:30}
+starrocks.readiness.required-migration=${STARROCKS_REQUIRED_MIGRATION:1}
+
+authenticate=${CBIOPORTAL_AUTHENTICATE}
+session.service.url=${CBIOPORTAL_SESSION_SERVICE_URL}

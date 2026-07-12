@@ -7,6 +7,7 @@ import org.cbioportal.legacy.persistence.mybatis.typehandler.SampleTypeTypeHandl
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.annotation.MapperScan;
 import org.mybatis.spring.boot.autoconfigure.ConfigurationCustomizer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -24,10 +25,12 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 public class StarrocksMyBatisConfig {
 
   @Bean
-  ConfigurationCustomizer mybatisConfigurationCustomizer() {
+  ConfigurationCustomizer mybatisConfigurationCustomizer(
+      @Value("${starrocks.query-timeout-seconds:30}") int queryTimeoutSeconds) {
     return new ConfigurationCustomizer() {
       @Override
       public void customize(org.apache.ibatis.session.Configuration configuration) {
+        configuration.setDefaultStatementTimeout(queryTimeoutSeconds);
         configuration
             .getTypeHandlerRegistry()
             .register(Sample.SampleType.class, new SampleTypeTypeHandler());
@@ -37,10 +40,17 @@ public class StarrocksMyBatisConfig {
 
   @Bean("sqlSessionFactory")
   public SqlSessionFactoryBean sqlSessionFactory(
-      DataSource dataSource, ApplicationContext applicationContext) throws IOException {
+      DataSource dataSource,
+      ApplicationContext applicationContext,
+      ConfigurationCustomizer mybatisConfigurationCustomizer)
+      throws IOException {
     SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
     sessionFactory.setDataSource(dataSource);
     sessionFactory.setDatabaseIdProvider(ignored -> "starrocks");
+    org.apache.ibatis.session.Configuration configuration =
+        new org.apache.ibatis.session.Configuration();
+    mybatisConfigurationCustomizer.customize(configuration);
+    sessionFactory.setConfiguration(configuration);
 
     // Include StarRocks mapper XML and legacy mapper XML, but never ClickHouse mapper XML.
     sessionFactory.addMapperLocations(
@@ -49,7 +59,6 @@ public class StarrocksMyBatisConfig {
         applicationContext.getResources(
             "classpath:org/cbioportal/legacy/persistence/mybatis/*.xml"));
 
-    sessionFactory.setTypeHandlers(new SampleTypeTypeHandler());
     return sessionFactory;
   }
 

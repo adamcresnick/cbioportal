@@ -29,6 +29,7 @@ final class StarrocksTestCluster implements AutoCloseable {
           .withNetwork(network)
           .withNetworkAliases("starrocks-fe")
           .withExposedPorts(QUERY_PORT)
+          .withTmpFs(Map.of("/opt/starrocks/fe/meta", "rw,size=6g"))
           .withCommand(
               "bash",
               "-c",

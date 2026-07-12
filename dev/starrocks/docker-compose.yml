@@ -1,0 +1,109 @@
+name: cbioportal-starrocks
+
+services:
+  starrocks-fe:
+    image: starrocks/fe-ubuntu:3.5.19
+    hostname: starrocks-fe
+    command:
+      - bash
+      - -c
+      - |
+        printf '\nstorage_usage_hard_limit_percent = 99\nstorage_usage_hard_limit_reserve_bytes = 0\nstorage_usage_soft_limit_percent = 99\nstorage_usage_soft_limit_reserve_bytes = 0\n' >> /opt/starrocks/fe/conf/fe.conf
+        exec bash /opt/starrocks/fe/bin/start_fe.sh --host_type FQDN
+    ports:
+      - "${STARROCKS_FE_PORT:-9030}:9030"
+    volumes:
+      - ./.data/fe-meta:/opt/starrocks/fe/meta
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9030'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  starrocks-be:
+    image: starrocks/be-ubuntu:3.5.19
+    hostname: starrocks-be
+    command:
+      - bash
+      - -c
+      - |
+        printf '\nstorage_flood_stage_usage_percent = 99\nstorage_flood_stage_left_capacity_bytes = 0\nstorage_high_watermark_usage_percent = 99\nstorage_min_left_capacity_bytes = 0\n' >> /opt/starrocks/be/conf/be.conf
+        exec bash /opt/starrocks/be/bin/start_be.sh
+    depends_on:
+      starrocks-fe:
+        condition: service_healthy
+    tmpfs:
+      - /opt/starrocks/be/storage:size=2g
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8040'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  starrocks-init:
+    image: mysql:8.4.6
+    depends_on:
+      starrocks-fe:
+        condition: service_healthy
+      starrocks-be:
+        condition: service_healthy
+    environment:
+      STARROCKS_HOST: starrocks-fe
+      STARROCKS_PORT: "9030"
+      STARROCKS_DATABASE: ${STARROCKS_DATABASE:-cbioportal}
+      STARROCKS_USER: root
+      STARROCKS_PASSWORD: ""
+      PORTAL_DATABASE_USER: ${PORTAL_DATABASE_USER:-cbioportal}
+      PORTAL_DATABASE_PASSWORD: ${PORTAL_DATABASE_PASSWORD:-cbioportal-local-only}
+    entrypoint: ["bash", "/workspace/dev/starrocks/init.sh"]
+    volumes:
+      - ../..:/workspace:ro
+
+  session-database:
+    image: mongo:7.0
+    volumes:
+      - session-database:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  session-service:
+    image: cbioportal/session-service:0.6.1
+    environment:
+      JAVA_OPTS: -Dspring.data.mongodb.uri=mongodb://session-database:27017/session-service
+    depends_on:
+      session-database:
+        condition: service_healthy
+
+  cbioportal:
+    build:
+      context: ../..
+      dockerfile: docker/web/Dockerfile
+    environment:
+      STARROCKS_DATABASE: ${STARROCKS_DATABASE:-cbioportal}
+      PORTAL_DATABASE_USER: ${PORTAL_DATABASE_USER:-cbioportal}
+      PORTAL_DATABASE_PASSWORD: ${PORTAL_DATABASE_PASSWORD:-cbioportal-local-only}
+      JAVA_OPTS: -Xms512m -Xmx2g
+      WEBAPP_OPTS: --spring.config.additional-location=file:/config/application.properties
+    depends_on:
+      starrocks-init:
+        condition: service_completed_successfully
+      session-service:
+        condition: service_started
+    ports:
+      - "${CBIOPORTAL_PORT:-8080}:8080"
+    volumes:
+      - ./application.properties:/config/application.properties:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/api/health/starrocks"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  session-database:

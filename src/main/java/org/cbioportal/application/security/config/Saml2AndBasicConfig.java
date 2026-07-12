@@ -58,7 +58,8 @@ public class Saml2AndBasicConfig {
         .cors(withDefaults())
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/api/health", "/images/**", "/js/**", "/login")
+                auth.requestMatchers(
+                        "/api/health", "/api/health/starrocks", "/images/**", "/js/**", "/login")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
