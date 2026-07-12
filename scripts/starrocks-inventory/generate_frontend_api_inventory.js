@@ -6,6 +6,7 @@ const childProcess = require("child_process");
 const ts = require("typescript");
 
 const EXPECTED_FRONTEND_SHA = "5eab200650ecc2f111b94fea31f56a2f50a6ad22";
+const EXPECTED_OPERATION_COUNTS = { public: 41, internal: 59 };
 const HTTP_METHODS = new Set(["get", "post", "put", "patch", "delete"]);
 const NON_API_METHODS = new Set(["addErrorHandler", "removeErrorHandler"]);
 
@@ -410,6 +411,18 @@ function render(frontendRoot) {
         const rightKey = `${right.operation.client}\0${right.operationId}`;
         return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
     });
+    for (const [client, expectedCount] of Object.entries(
+        EXPECTED_OPERATION_COUNTS,
+    )) {
+        const actualCount = rows.filter(
+            (row) => row.operation.client === client,
+        ).length;
+        if (actualCount !== expectedCount) {
+            throw new Error(
+                `Expected ${expectedCount} ${client} operations, found ${actualCount}`,
+            );
+        }
+    }
     const lines = [
         [
             "frontend_sha",
