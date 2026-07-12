@@ -9,6 +9,8 @@ This contract targets cBioPortal `v7.0.5` and StarRocks `3.5.19`. It is independ
 - `src/test/resources/starrocks/seed.sql`: deterministic two-study integration fixture.
 - `docs/starrocks-schema-contract.tsv`: generated column, key, distribution, nullability, and fixture inventory.
 - `docs/starrocks-mapper-table-inventory.tsv`: generated mapper-to-table coverage.
+- `docs/starrocks-mapper-statement-inventory.tsv`: generated statement-level backend/loading, expanded table lineage, test-reference, and StarRocks verification status.
+- `docs/starrocks-frontend-api-inventory.tsv`: generated public/internal API operations used by the pinned frontend, including production/test classification and source call sites.
 
 Every table uses the StarRocks OLAP duplicate-key model, hash distribution, one bucket, and replication `1`. Those topology values are intentionally suitable for tests and single-BE developer deployments. Production sizing must revise bucket and replication properties for its BE count and workload before applying the DDL.
 
@@ -31,12 +33,27 @@ Do not run this clean-recreate bootstrap against a database containing data that
 
 ## Freshness gates
 
-Regenerate both checked inventories after changing DDL, fixture rows, or mapper table references:
+Regenerate the schema and mapper-table inventories after changing DDL, fixture rows, or mapper table references:
 
 ```bash
 scripts/generate_starrocks_schema_inventory.py
+python3 -m unittest scripts/test_generate_starrocks_schema_inventory.py
 scripts/generate_starrocks_schema_inventory.py --check
 ```
+
+Regenerate the frontend API inventory from an exact checkout of `cbioportal-frontend` `v7.0.5`:
+
+```bash
+npm ci --prefix scripts/starrocks-inventory --ignore-scripts
+CBIOPORTAL_FRONTEND_ROOT=../cbioportal-frontend-v7.0.5 \
+  scripts/generate_starrocks_frontend_api_inventory.sh
+CBIOPORTAL_FRONTEND_ROOT=../cbioportal-frontend-v7.0.5 \
+  scripts/generate_starrocks_frontend_api_inventory.sh --check
+```
+
+The generator rejects any frontend checkout other than commit `5eab200650ecc2f111b94fea31f56a2f50a6ad22`, unknown client methods, duplicate OpenAPI operation IDs, and stale output.
+
+The statement inventory is also a gap ledger. A row marked `UNVERIFIED` is loaded in StarRocks mode but does not yet have a statically traceable real-StarRocks test reference. The inventory must reach zero `UNVERIFIED` rows for in-scope frontend and deployment paths before the backend is declared production-ready; generating the file alone is not evidence of compatibility.
 
 `StarrocksSchemaContractTest` starts the official FE and BE `3.5.19` images, applies the complete schema and fixture twice, checks all 63 tables and edge-case row counts, and rejects ClickHouse dialect tokens.
 
