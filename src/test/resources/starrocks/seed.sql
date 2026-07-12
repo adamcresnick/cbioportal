@@ -147,8 +147,8 @@ INSERT INTO clinical_event VALUES
   (20001,201,0,NULL,'SPECIMEN'),(20002,201,40,65,'TREATMENT'),(20003,201,90,NULL,'SPECIMEN');
 
 INSERT INTO clinical_event_data VALUES
-  (10001,'SAMPLE_ID','SA1'),(10002,'AGENT','DrugA'),(10002,'AGENT','DrugA-duplicate'),(10002,'STATUS','COMPLETED'),(10003,'SAMPLE_ID','SA2'),
-  (20001,'SAMPLE_ID','SB1'),(20002,'AGENT','DrugB'),(20002,'STATUS','COMPLETED'),(20003,'SAMPLE_ID','SB2');
+  (10001,'SAMPLE_ID','SA1'),(10002,'AGENT','DrugA'),(10002,'AGENT','DrugA-duplicate'),(10002,'AGENT_CLASS','Chemotherapy'),(10002,'AGENT_TARGET','TP53, EGFR'),(10002,'STATUS','COMPLETED'),(10003,'SAMPLE_ID','SA2'),
+  (20001,'SAMPLE_ID','SB1'),(20002,'AGENT','DrugB'),(20002,'AGENT_CLASS','Targeted'),(20002,'AGENT_TARGET','BRAF'),(20002,'STATUS','COMPLETED'),(20003,'SAMPLE_ID','SB2');
 
 INSERT INTO mutation_event VALUES
   (1,7157,'17',7674220,7674220,'C','T','R175H','Missense_Mutation','GRCh38','+','SNP',NULL,NULL,'NM_000546','c.524G>A','P04637',175,175,1,'TP53 R175'),
@@ -303,9 +303,13 @@ INSERT INTO clinical_event_data_derived
 VALUES
   ('sr_study_a_PA1','SAMPLE_ID','SA1',0,0,'SPECIMEN','sr_study_a'),
   ('sr_study_a_PA1','AGENT','DrugA',50,75,'TREATMENT','sr_study_a'),
+  ('sr_study_a_PA1','AGENT_CLASS','Chemotherapy',50,75,'TREATMENT','sr_study_a'),
+  ('sr_study_a_PA1','AGENT_TARGET','TP53, EGFR',50,75,'TREATMENT','sr_study_a'),
   ('sr_study_a_PA1','SAMPLE_ID','SA2',100,100,'SPECIMEN','sr_study_a'),
   ('sr_study_b_PB1','SAMPLE_ID','SB1',0,0,'SPECIMEN','sr_study_b'),
   ('sr_study_b_PB1','AGENT','DrugB',40,65,'TREATMENT','sr_study_b'),
+  ('sr_study_b_PB1','AGENT_CLASS','Targeted',40,65,'TREATMENT','sr_study_b'),
+  ('sr_study_b_PB1','AGENT_TARGET','BRAF',40,65,'TREATMENT','sr_study_b'),
   ('sr_study_b_PB1','SAMPLE_ID','SB2',90,90,'SPECIMEN','sr_study_b');
 
 INSERT INTO genomic_event_derived VALUES

@@ -5,7 +5,6 @@ import java.util.List;
 import org.cbioportal.domain.sample.Sample;
 import org.cbioportal.domain.sample.repository.SampleRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
-import org.cbioportal.infrastructure.repository.starrocks.StarrocksStudyViewFilterSupport;
 import org.cbioportal.legacy.model.meta.BaseMeta;
 import org.cbioportal.legacy.persistence.mybatis.util.PaginationCalculator;
 import org.cbioportal.shared.enums.ProjectionType;
@@ -27,13 +26,11 @@ public class StarrocksSampleRepository implements SampleRepository {
 
   @Override
   public List<Sample> getFilteredSamples(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getFilteredSamples(studyViewFilterContext);
   }
 
   @Override
   public int getFilteredSamplesCount(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getSampleCount(studyViewFilterContext);
   }
 

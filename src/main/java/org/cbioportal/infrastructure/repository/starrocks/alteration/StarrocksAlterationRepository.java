@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 import org.apache.commons.collections4.CollectionUtils;
 import org.cbioportal.domain.alteration.repository.AlterationRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
-import org.cbioportal.infrastructure.repository.starrocks.StarrocksStudyViewFilterSupport;
 import org.cbioportal.legacy.model.AlterationCountByGene;
 import org.cbioportal.legacy.model.AlterationFilter;
 import org.cbioportal.legacy.model.CopyNumberCountByGene;
@@ -32,21 +31,18 @@ public class StarrocksAlterationRepository implements AlterationRepository {
 
   @Override
   public List<AlterationCountByGene> getMutatedGenes(StudyViewFilterContext context) {
-    requireSupported(context);
     return mapper.getMutatedGenes(
         context, AlterationFilterHelper.build(context.alterationFilter()));
   }
 
   @Override
   public List<AlterationCountByGene> getStructuralVariantGenes(StudyViewFilterContext context) {
-    requireSupported(context);
     return mapper.getStructuralVariantGenes(
         context, AlterationFilterHelper.build(context.alterationFilter()));
   }
 
   @Override
   public List<CopyNumberCountByGene> getCnaGenes(StudyViewFilterContext context) {
-    requireSupported(context);
     return mapper.getCnaGenes(context, AlterationFilterHelper.build(context.alterationFilter()));
   }
 
@@ -55,7 +51,6 @@ public class StarrocksAlterationRepository implements AlterationRepository {
       StudyViewFilterContext context,
       String alterationType,
       List<MolecularProfile> molecularProfiles) {
-    requireSupported(context);
     return mapper.getTotalProfiledCounts(context, alterationType, molecularProfiles).stream()
         .collect(
             Collectors.groupingBy(
@@ -66,7 +61,6 @@ public class StarrocksAlterationRepository implements AlterationRepository {
   @Override
   public Map<String, Set<String>> getMatchingGenePanelIds(
       StudyViewFilterContext context, String alterationType) {
-    requireSupported(context);
     return mapper.getMatchingGenePanelIds(context, alterationType).stream()
         .collect(
             Collectors.groupingBy(
@@ -100,7 +94,6 @@ public class StarrocksAlterationRepository implements AlterationRepository {
   @Override
   public int getEntityProfileCountWithoutPanelData(
       StudyViewFilterContext context, String alterationType) {
-    requireSupported(context);
     return mapper.getSampleProfileCountWithoutPanelData(context, alterationType);
   }
 
@@ -131,9 +124,5 @@ public class StarrocksAlterationRepository implements AlterationRepository {
   @Override
   public List<MolecularProfile> getAllMolecularProfiles() {
     return mapper.getAllMolecularProfiles();
-  }
-
-  private static void requireSupported(StudyViewFilterContext context) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(context);
   }
 }
