@@ -252,10 +252,15 @@
             INNER JOIN sample ON sample_cna_event.sample_id = sample.internal_id
             INNER JOIN gene ON cna_event.entrez_gene_id = gene.entrez_gene_id
         WHERE genetic_profile.stable_id = #{molecularProfileId}
-        <if test="entrezGeneIds != null">
+        <if test="entrezGeneIds != null and entrezGeneIds.isEmpty()">
+            AND 1 = 0
+        </if>
+        <if test="entrezGeneIds != null and !entrezGeneIds.isEmpty()">
             AND
-            (cna_event.entrez_gene_id, cna_event.alteration) IN
-                <foreach index="i" collection="entrezGeneIds" open="(" separator="," close=")">(#{entrezGeneIds[${i}]},#{alterations[${i}]})</foreach>
+            <foreach index="i" collection="entrezGeneIds" open="(" separator=" OR " close=")">
+                (cna_event.entrez_gene_id = #{entrezGeneIds[${i}]}
+                AND cna_event.alteration = #{alterations[${i}]})
+            </foreach>
         </if>
         <if test="sampleIds != null and !sampleIds.isEmpty()">
             AND sample.stable_id IN

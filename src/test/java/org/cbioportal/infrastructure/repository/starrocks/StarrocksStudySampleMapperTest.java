@@ -129,6 +129,11 @@ class StarrocksStudySampleMapperTest {
                 })
             .extracting(sample -> sample.stableId())
             .containsExactly("SA2", "SA1");
+        assertThat(
+                samples.getDetailedSamples(
+                    List.of("sr_study_a"), "PA1", null, null, 0, 0, null, "ASC"))
+            .extracting(sample -> sample.stableId())
+            .containsExactly("SA1", "SA2");
 
         assertThat(samples.getSamplesBySampleListIds(List.of("sr_study_a_all"))).hasSize(4);
         assertThat(samples.getSummarySamplesBySampleListIds(List.of("sr_study_a_all")))
@@ -172,6 +177,15 @@ class StarrocksStudySampleMapperTest {
         assertThat(sampleResponse.getBody())
             .extracting(sample -> sample.sampleId())
             .containsExactly("SA4", "SA3");
+
+        var patientSamplesResponse =
+            context
+                .getBean(ColumnStoreSampleController.class)
+                .getAllSamplesOfPatientInStudy(
+                    "sr_study_a", "PA1", ProjectionType.DETAILED, 100, 0, null, Direction.ASC);
+        assertThat(patientSamplesResponse.getBody())
+            .extracting(sample -> sample.sampleId())
+            .containsExactly("SA1", "SA2");
       }
     }
   }

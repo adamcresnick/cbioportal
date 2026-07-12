@@ -528,8 +528,11 @@
                             <foreach item="id" collection="${identifiers}" open="(" separator="," close=")">#{id.caseId}</foreach>
                     </when>
                     <otherwise>
-                        AND (${geneticProfileIdentifier},<include refid="${caseStableIdentifier}" />) IN
-                            <foreach item="id" collection="${identifiers}" open="(" separator="," close=")">(#{id.molecularProfileId},#{id.caseId})</foreach>
+                        AND
+                        <foreach item="id" collection="${identifiers}" open="(" separator=" OR " close=")">
+                            (${geneticProfileIdentifier} = #{id.molecularProfileId}
+                            AND <include refid="${caseStableIdentifier}" /> = #{id.caseId})
+                        </foreach>
                     </otherwise>
                 </choose>
             </otherwise>

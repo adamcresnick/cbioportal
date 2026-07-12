@@ -303,7 +303,7 @@
                 <choose><when test="direction == 'DESC'">DESC</when><otherwise>ASC</otherwise></choose>
             </when>
             <otherwise>
-                cancer_study_identifier ASC, sample_stable_id ASC
+                sample_derived.cancer_study_identifier ASC, sample_stable_id ASC
             </otherwise>
         </choose>
         <if test="limit != null and limit != 0">

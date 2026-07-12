@@ -8,13 +8,17 @@ import org.apache.ibatis.cursor.Cursor;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.cbioportal.legacy.model.GeneMolecularAlteration;
+import org.cbioportal.legacy.model.MolecularProfileCaseIdentifier;
 import org.cbioportal.legacy.model.NamespaceAttribute;
 import org.cbioportal.legacy.model.NamespaceAttributeCount;
 import org.cbioportal.legacy.model.Sample;
+import org.cbioportal.legacy.model.util.Select;
+import org.cbioportal.legacy.persistence.mybatis.AlterationCountsMapper;
 import org.cbioportal.legacy.persistence.mybatis.ClinicalAttributeMapper;
 import org.cbioportal.legacy.persistence.mybatis.ClinicalDataMapper;
 import org.cbioportal.legacy.persistence.mybatis.CopyNumberSegmentMapper;
 import org.cbioportal.legacy.persistence.mybatis.DiscreteCopyNumberMapper;
+import org.cbioportal.legacy.persistence.mybatis.GenePanelMapper;
 import org.cbioportal.legacy.persistence.mybatis.MolecularDataMapper;
 import org.cbioportal.legacy.persistence.mybatis.NamespaceMapper;
 import org.cbioportal.legacy.persistence.mybatis.PatientMapper;
@@ -42,6 +46,8 @@ class StarrocksSharedMapperCompatibilityTest {
         assertEntityArrayBindings(session);
         assertEmptyArrayBindings(session);
         assertMolecularData(session);
+        assertGenePanelData(session);
+        assertAlterationCounts(session);
         assertClinicalNumericSort(session);
         assertCnaSegmentsAndTreatments(session);
         assertNamespaceJson(session);
@@ -202,6 +208,143 @@ class StarrocksSharedMapperCompatibilityTest {
         .isEmpty();
   }
 
+  private static void assertGenePanelData(SqlSession session) {
+    GenePanelMapper mapper = session.getMapper(GenePanelMapper.class);
+    assertThat(mapper.getAllGenePanels("SUMMARY", null, null, null, null))
+        .singleElement()
+        .satisfies(panel -> assertThat(panel.getStableId()).isEqualTo("TEST_PANEL"));
+    assertThat(mapper.getMetaGenePanels().getTotalCount()).isEqualTo(1);
+    assertThat(mapper.getGenePanel("TEST_PANEL", "DETAILED").getDescription()).contains("fixture");
+    assertThat(mapper.fetchGenePanels(List.of("TEST_PANEL"), "SUMMARY")).hasSize(1);
+    assertThat(mapper.getGenesOfPanels(List.of("TEST_PANEL")))
+        .extracting(org.cbioportal.legacy.model.GenePanelToGene::getHugoGeneSymbol)
+        .containsExactlyInAnyOrder("EGFR", "TP53");
+
+    assertThat(mapper.getGenePanelDataBySampleListId(STUDY_A + "_mutations", STUDY_A + "_all"))
+        .hasSize(4);
+    assertThat(mapper.getGenePanelDataBySampleIds(STUDY_A + "_mutations", List.of("SA1", "SA2")))
+        .allSatisfy(data -> assertThat(data.getGenePanelId()).isEqualTo("TEST_PANEL"))
+        .hasSize(2);
+    assertThat(
+            mapper.fetchGenePanelDataByMolecularProfileIds(
+                Set.of(STUDY_A + "_mutations", STUDY_A + "_gistic")))
+        .hasSize(8);
+
+    var sampleIdentifiers =
+        List.of(
+            profileCase(STUDY_A + "_mutations", "SA1"), profileCase(STUDY_A + "_gistic", "SA2"));
+    assertThat(mapper.fetchGenePanelDataInMultipleMolecularProfiles(sampleIdentifiers))
+        .extracting(data -> data.getMolecularProfileId() + "/" + data.getSampleId())
+        .containsExactlyInAnyOrder(STUDY_A + "_mutations/SA1", STUDY_A + "_gistic/SA2");
+
+    var patientIdentifiers =
+        List.of(
+            profileCase(STUDY_A + "_mutations", "PA1"), profileCase(STUDY_B + "_gistic", "PB1"));
+    assertThat(mapper.fetchGenePanelDataInMultipleMolecularProfilesByPatientIds(patientIdentifiers))
+        .extracting(data -> data.getMolecularProfileId() + "/" + data.getPatientId())
+        .containsOnly(STUDY_A + "_mutations/PA1", STUDY_B + "_gistic/PB1");
+  }
+
+  private static MolecularProfileCaseIdentifier profileCase(String profileId, String caseId) {
+    MolecularProfileCaseIdentifier identifier = new MolecularProfileCaseIdentifier();
+    identifier.setMolecularProfileId(profileId);
+    identifier.setCaseId(caseId);
+    return identifier;
+  }
+
+  private static void assertAlterationCounts(SqlSession session) {
+    AlterationCountsMapper mapper = session.getMapper(AlterationCountsMapper.class);
+    var mutationSamples =
+        List.of(
+            profileCase(STUDY_A + "_mutations", "SA1"), profileCase(STUDY_B + "_mutations", "SB1"));
+    var cnaSamples =
+        List.of(profileCase(STUDY_A + "_gistic", "SA1"), profileCase(STUDY_B + "_gistic", "SB1"));
+    var structuralVariantSamples =
+        List.of(
+            profileCase(STUDY_A + "_structural_variants", "SA1"),
+            profileCase(STUDY_B + "_structural_variants", "SB1"));
+    assertThat(mapper.getMolecularProfileCaseInternalIdentifier(mutationSamples, "SAMPLE_ID"))
+        .hasSize(2);
+
+    var mutationSampleInternal = List.of(profileCase("101", "1001"), profileCase("201", "2001"));
+    var cnaSampleInternal = List.of(profileCase("102", "1001"), profileCase("202", "2001"));
+    var structuralVariantSampleInternal =
+        List.of(profileCase("104", "1001"), profileCase("204", "2001"));
+
+    assertThat(
+            mapper.getSampleAlterationGeneCounts(
+                mutationSampleInternal,
+                cnaSampleInternal,
+                structuralVariantSampleInternal,
+                Select.all(),
+                Select.all(),
+                Select.all(),
+                true,
+                true,
+                true,
+                Select.all(),
+                true,
+                true,
+                true,
+                true))
+        .isNotEmpty();
+    assertThat(
+            mapper.getSampleCnaGeneCounts(
+                cnaSampleInternal,
+                Select.all(),
+                Select.all(),
+                true,
+                true,
+                true,
+                Select.all(),
+                true))
+        .isNotEmpty();
+    assertThat(
+            mapper.getSampleStructuralVariantCounts(
+                structuralVariantSamples, true, true, true, Select.all(), true, true, true, true))
+        .isNotEmpty();
+    var structuralVariantPatients =
+        List.of(
+            profileCase(STUDY_A + "_structural_variants", "PA1"),
+            profileCase(STUDY_B + "_structural_variants", "PB1"));
+    var mutationPatientInternal = List.of(profileCase("101", "101"), profileCase("201", "201"));
+    var cnaPatientInternal = List.of(profileCase("102", "101"), profileCase("202", "201"));
+    var structuralVariantPatientInternal =
+        List.of(profileCase("104", "101"), profileCase("204", "201"));
+    assertThat(
+            mapper.getPatientAlterationGeneCounts(
+                mutationPatientInternal,
+                cnaPatientInternal,
+                structuralVariantPatientInternal,
+                Select.all(),
+                Select.all(),
+                Select.all(),
+                true,
+                true,
+                true,
+                Select.all(),
+                true,
+                true,
+                true,
+                true))
+        .isNotEmpty();
+    assertThat(
+            mapper.getPatientCnaGeneCounts(
+                cnaPatientInternal,
+                Select.all(),
+                Select.all(),
+                true,
+                true,
+                true,
+                Select.all(),
+                true))
+        .isNotEmpty();
+    assertThat(
+            mapper.getPatientStructuralVariantCounts(
+                structuralVariantPatients, true, true, true, Select.all(), true, true, true, true))
+        .isNotEmpty();
+  }
+
   private static void assertClinicalNumericSort(SqlSession session) {
     ClinicalDataMapper mapper = session.getMapper(ClinicalDataMapper.class);
     assertThat(
@@ -229,6 +372,15 @@ class StarrocksSharedMapperCompatibilityTest {
                 null,
                 "SUMMARY"))
         .hasSize(2);
+    assertThat(
+            cna.getSampleCountByGeneAndAlterationAndSampleIds(
+                STUDY_A + "_gistic", List.of("SA1", "SA2"), List.of(7157, 1956), List.of(2, -2)))
+        .extracting(count -> count.getEntrezGeneId() + "/" + count.getAlteration())
+        .containsExactlyInAnyOrder("7157/2", "1956/-2");
+    assertThat(
+            cna.getSampleCountByGeneAndAlterationAndSampleIds(
+                STUDY_A + "_gistic", List.of("SA1"), List.of(), List.of()))
+        .isEmpty();
 
     CopyNumberSegmentMapper segments = session.getMapper(CopyNumberSegmentMapper.class);
     assertThat(

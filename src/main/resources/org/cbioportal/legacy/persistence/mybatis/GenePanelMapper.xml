@@ -137,8 +137,11 @@
                                 <foreach item="id" collection="list" open="(" separator="," close=")">#{id.caseId}</foreach>
                         </when>
                         <otherwise>
-                            AND (genetic_profile.stable_id, sample.stable_id) IN
-                                <foreach item="id" collection="list" open="(" separator="," close=")">(#{id.molecularProfileId},#{id.caseId})</foreach>
+                            AND
+                            <foreach item="id" collection="list" open="(" separator=" OR " close=")">
+                                (genetic_profile.stable_id = #{id.molecularProfileId}
+                                AND sample.stable_id = #{id.caseId})
+                            </foreach>
                         </otherwise>
                     </choose>
                 </otherwise>
@@ -163,8 +166,11 @@
                                 <foreach item="id" collection="list" open="(" separator="," close=")">#{id.caseId}</foreach>
                         </when>
                         <otherwise>
-                            AND (genetic_profile.stable_id, patient.stable_id) IN
-                                <foreach item="id" collection="list" open="(" separator="," close=")">(#{id.molecularProfileId},#{id.caseId})</foreach>
+                            AND
+                            <foreach item="id" collection="list" open="(" separator=" OR " close=")">
+                                (genetic_profile.stable_id = #{id.molecularProfileId}
+                                AND patient.stable_id = #{id.caseId})
+                            </foreach>
                         </otherwise>
                     </choose>
                 </otherwise>
