@@ -3,7 +3,6 @@ package org.cbioportal.infrastructure.repository.starrocks.clinical_event;
 import java.util.List;
 import org.cbioportal.domain.clinical_event.repository.ClinicalEventRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
-import org.cbioportal.infrastructure.repository.starrocks.StarrocksStudyViewFilterSupport;
 import org.cbioportal.legacy.model.ClinicalEventTypeCount;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
@@ -24,7 +23,6 @@ public class StarrocksClinicalEventRepository implements ClinicalEventRepository
   @Override
   public List<ClinicalEventTypeCount> getClinicalEventTypeCounts(
       StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getClinicalEventTypeCounts(studyViewFilterContext);
   }
 }

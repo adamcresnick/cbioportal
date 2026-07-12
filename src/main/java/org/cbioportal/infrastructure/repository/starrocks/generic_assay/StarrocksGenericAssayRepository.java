@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
 import org.apache.commons.collections4.CollectionUtils;
 import org.cbioportal.domain.generic_assay.repository.GenericAssayRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
-import org.cbioportal.infrastructure.repository.starrocks.StarrocksStudyViewFilterSupport;
 import org.cbioportal.legacy.model.ClinicalDataCount;
 import org.cbioportal.legacy.model.GenericAssayDataCount;
 import org.cbioportal.legacy.model.GenericAssayDataCountItem;
@@ -47,7 +46,6 @@ public class StarrocksGenericAssayRepository implements GenericAssayRepository {
   @Override
   public List<MolecularProfile> getFilteredMolecularProfilesByAlterationType(
       StudyViewFilterContext context, String alterationType) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(context);
     return mapper.getFilteredMolecularProfilesByAlterationType(context, alterationType);
   }
 
@@ -57,7 +55,6 @@ public class StarrocksGenericAssayRepository implements GenericAssayRepository {
     if (CollectionUtils.isEmpty(filters)) {
       return List.of();
     }
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(context);
     String profileType = filters.getFirst().getProfileType();
     List<String> stableIds = filters.stream().map(GenericAssayDataBinFilter::getStableId).toList();
     return mapper.getGenericAssayDataCountRows(context, profileType, stableIds, true).stream()
@@ -71,7 +68,6 @@ public class StarrocksGenericAssayRepository implements GenericAssayRepository {
     if (CollectionUtils.isEmpty(filters)) {
       return List.of();
     }
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(context);
     String profileType = filters.getFirst().getProfileType();
     List<String> stableIds = filters.stream().map(GenericAssayDataFilter::getStableId).toList();
     return groupCounts(mapper.getGenericAssayDataCountRows(context, profileType, stableIds, true));
@@ -80,7 +76,6 @@ public class StarrocksGenericAssayRepository implements GenericAssayRepository {
   @Override
   public List<GenericAssayDataCountItem> getGenericAssayDataCountsByProfileType(
       StudyViewFilterContext context, String profileType) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(context);
     return groupCounts(mapper.getGenericAssayDataCountRows(context, profileType, null, false));
   }
 

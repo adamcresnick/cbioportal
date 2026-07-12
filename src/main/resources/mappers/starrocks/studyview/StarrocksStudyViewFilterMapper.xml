@@ -20,6 +20,32 @@
                 #{sampleIdentifier}
             </foreach>
         </if>
+        <if test="studyViewFilterContext.customDataFilters != null and !studyViewFilterContext.customDataFilters.isEmpty() and studyViewFilterContext.customSampleIdentifiers != null">
+            <foreach item="customDataFilter" collection="studyViewFilterContext.customDataFilters">
+                AND (
+                    base_sample.sample_unique_id IN (
+                        ''
+                        <foreach item="sampleIdentifier" collection="studyViewFilterContext.customSampleIdentifiers">
+                            <if test="!sampleIdentifier.isFilteredOut and sampleIdentifier.uniqueSampleId != null">
+                                , #{sampleIdentifier.uniqueSampleId}
+                            </if>
+                        </foreach>
+                    )
+                    <foreach item="customDataFilterValue" collection="customDataFilter.values">
+                        <if test="customDataFilterValue.value == 'NA'">
+                            OR base_sample.sample_unique_id NOT IN (
+                                ''
+                                <foreach item="sampleIdentifier" collection="studyViewFilterContext.customSampleIdentifiers">
+                                    <if test="sampleIdentifier.uniqueSampleId != null">
+                                        , #{sampleIdentifier.uniqueSampleId}
+                                    </if>
+                                </foreach>
+                            )
+                        </if>
+                    </foreach>
+                )
+            </foreach>
+        </if>
         <if test="studyViewFilterContext.caseLists != null and !studyViewFilterContext.caseLists.isEmpty()">
             <foreach item="listGroup" collection="studyViewFilterContext.caseLists">
                 <if test="listGroup != null and !listGroup.isEmpty()">
@@ -446,49 +472,109 @@
                 )
             </foreach>
         </if>
-        <if test="studyViewFilterContext.patientTreatmentFilters != null and studyViewFilterContext.patientTreatmentFilters.filters != null and !studyViewFilterContext.patientTreatmentFilters.filters.isEmpty()">
-            <foreach item="treatmentGroup" collection="studyViewFilterContext.patientTreatmentFilters.filters">
-                AND EXISTS (
-                    SELECT 1
-                    FROM clinical_event_data_derived patient_treatment
-                    WHERE patient_treatment.patient_unique_id = base_sample.patient_unique_id
-                      AND LOWER(patient_treatment.event_type) = 'treatment'
-                      AND patient_treatment.`key` = 'AGENT'
-                      AND patient_treatment.value IN
-                      <foreach item="treatmentFilter" collection="treatmentGroup.filters" open="(" separator="," close=")">
-                          #{treatmentFilter.treatment}
-                      </foreach>
-                )
+        <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.patientTreatmentFilters">
+            <property name="filters" value="studyViewFilterContext.patientTreatmentFilters"/>
+            <property name="eventDataKey" value="AGENT"/>
+            <property name="delimited" value="false"/>
+        </include>
+        <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.patientTreatmentFilters">
+            <property name="filters" value="studyViewFilterContext.patientTreatmentGroupFilters"/>
+            <property name="eventDataKey" value="AGENT_CLASS"/>
+            <property name="delimited" value="false"/>
+        </include>
+        <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.patientTreatmentFilters">
+            <property name="filters" value="studyViewFilterContext.patientTreatmentTargetFilters"/>
+            <property name="eventDataKey" value="AGENT_TARGET"/>
+            <property name="delimited" value="true"/>
+        </include>
+        <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleTreatmentFilters">
+            <property name="filters" value="studyViewFilterContext.sampleTreatmentFilters"/>
+            <property name="eventDataKey" value="AGENT"/>
+            <property name="delimited" value="false"/>
+        </include>
+        <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleTreatmentFilters">
+            <property name="filters" value="studyViewFilterContext.sampleTreatmentGroupFilters"/>
+            <property name="eventDataKey" value="AGENT_CLASS"/>
+            <property name="delimited" value="false"/>
+        </include>
+        <include refid="org.cbioportal.infrastructure.repository.starrocks.studyview.StarrocksStudyViewFilterMapper.sampleTreatmentFilters">
+            <property name="filters" value="studyViewFilterContext.sampleTreatmentTargetFilters"/>
+            <property name="eventDataKey" value="AGENT_TARGET"/>
+            <property name="delimited" value="true"/>
+        </include>
+    </sql>
+
+    <sql id="patientTreatmentFilters">
+        <if test="${filters} != null and ${filters}.filters != null and !${filters}.filters.isEmpty()">
+            <foreach item="treatmentGroup" collection="${filters}.filters">
+                <if test="treatmentGroup.filters != null and !treatmentGroup.filters.isEmpty()">
+                    AND EXISTS (
+                        SELECT 1
+                        FROM clinical_event_data_derived patient_treatment
+                        WHERE patient_treatment.patient_unique_id = base_sample.patient_unique_id
+                          AND LOWER(patient_treatment.event_type) = 'treatment'
+                          AND patient_treatment.`key` = '${eventDataKey}'
+                          AND
+                          <foreach item="treatmentFilter" collection="treatmentGroup.filters" open="(" separator=" OR " close=")">
+                              <choose>
+                                  <when test="${delimited}">
+                                      array_contains(
+                                          regexp_split(patient_treatment.value, ', *'),
+                                          #{treatmentFilter.treatment}
+                                      )
+                                  </when>
+                                  <otherwise>
+                                      patient_treatment.value = #{treatmentFilter.treatment}
+                                  </otherwise>
+                              </choose>
+                          </foreach>
+                    )
+                </if>
             </foreach>
         </if>
-        <if test="studyViewFilterContext.sampleTreatmentFilters != null and studyViewFilterContext.sampleTreatmentFilters.filters != null and !studyViewFilterContext.sampleTreatmentFilters.filters.isEmpty()">
-            <foreach item="treatmentGroup" collection="studyViewFilterContext.sampleTreatmentFilters.filters">
-                AND (
-                <foreach item="treatmentFilter" collection="treatmentGroup.filters" open="(" separator=" OR " close=")">
-                    EXISTS (
-                        SELECT 1
-                        FROM clinical_event_data_derived acquisition
-                        INNER JOIN clinical_event_data_derived sample_treatment
-                            ON sample_treatment.patient_unique_id = acquisition.patient_unique_id
-                        WHERE acquisition.patient_unique_id = base_sample.patient_unique_id
-                          AND acquisition.cancer_study_identifier = base_sample.cancer_study_identifier
-                          AND acquisition.`key` = 'SAMPLE_ID'
-                          AND acquisition.value = base_sample.sample_stable_id
-                          AND LOWER(acquisition.event_type) IN ('sample acquisition', 'specimen')
-                          AND LOWER(sample_treatment.event_type) = 'treatment'
-                          AND sample_treatment.`key` = 'AGENT'
-                          AND sample_treatment.value = #{treatmentFilter.treatment}
-                        <choose>
-                            <when test="treatmentFilter.time.name() == 'Pre'">
-                                AND acquisition.start_date &lt;= sample_treatment.start_date
-                            </when>
-                            <otherwise>
-                                AND acquisition.start_date &gt; sample_treatment.start_date
-                            </otherwise>
-                        </choose>
-                    )
-                </foreach>
-                )
+    </sql>
+
+    <sql id="sampleTreatmentFilters">
+        <if test="${filters} != null and ${filters}.filters != null and !${filters}.filters.isEmpty()">
+            <foreach item="treatmentGroup" collection="${filters}.filters">
+                <if test="treatmentGroup.filters != null and !treatmentGroup.filters.isEmpty()">
+                    AND
+                    <foreach item="treatmentFilter" collection="treatmentGroup.filters" open="(" separator=" OR " close=")">
+                        EXISTS (
+                            SELECT 1
+                            FROM clinical_event_data_derived acquisition
+                            INNER JOIN clinical_event_data_derived sample_treatment
+                                ON sample_treatment.patient_unique_id = acquisition.patient_unique_id
+                            WHERE acquisition.patient_unique_id = base_sample.patient_unique_id
+                              AND acquisition.cancer_study_identifier = base_sample.cancer_study_identifier
+                              AND acquisition.`key` = 'SAMPLE_ID'
+                              AND acquisition.value = base_sample.sample_stable_id
+                              AND LOWER(acquisition.event_type) IN ('sample acquisition', 'specimen')
+                              AND LOWER(sample_treatment.event_type) = 'treatment'
+                              AND sample_treatment.`key` = '${eventDataKey}'
+                              AND
+                              <choose>
+                                  <when test="${delimited}">
+                                      array_contains(
+                                          regexp_split(sample_treatment.value, ', *'),
+                                          #{treatmentFilter.treatment}
+                                      )
+                                  </when>
+                                  <otherwise>
+                                      sample_treatment.value = #{treatmentFilter.treatment}
+                                  </otherwise>
+                              </choose>
+                            <choose>
+                                <when test="treatmentFilter.time.name() == 'Pre'">
+                                    AND acquisition.start_date &lt;= sample_treatment.start_date
+                                </when>
+                                <otherwise>
+                                    AND acquisition.start_date &gt; sample_treatment.start_date
+                                </otherwise>
+                            </choose>
+                        )
+                    </foreach>
+                </if>
             </foreach>
         </if>
     </sql>

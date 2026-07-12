@@ -7,7 +7,6 @@ import org.cbioportal.domain.clinical_data.ClinicalData;
 import org.cbioportal.domain.clinical_data.ClinicalDataType;
 import org.cbioportal.domain.clinical_data.repository.ClinicalDataRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
-import org.cbioportal.infrastructure.repository.starrocks.StarrocksStudyViewFilterSupport;
 import org.cbioportal.legacy.model.ClinicalDataCountItem;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
@@ -48,7 +47,6 @@ public class StarrocksClinicalDataRepository implements ClinicalDataRepository {
   @Override
   public List<ClinicalData> getPatientClinicalData(
       StudyViewFilterContext studyViewFilterContext, List<String> filteredAttributes) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getPatientClinicalDataByStudyViewFilter(
         studyViewFilterContext, filteredAttributes);
   }
@@ -61,7 +59,6 @@ public class StarrocksClinicalDataRepository implements ClinicalDataRepository {
   @Override
   public List<ClinicalData> getSampleClinicalData(
       StudyViewFilterContext studyViewFilterContext, List<String> filteredAttributes) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getSampleClinicalDataByStudyViewFilter(
         studyViewFilterContext, filteredAttributes);
   }
@@ -77,7 +74,6 @@ public class StarrocksClinicalDataRepository implements ClinicalDataRepository {
       List<String> sampleAttributeIds,
       List<String> patientAttributeIds,
       List<String> conflictingAttributeIds) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     if (allEmpty(sampleAttributeIds, patientAttributeIds, conflictingAttributeIds)) {
       return List.of();
     }

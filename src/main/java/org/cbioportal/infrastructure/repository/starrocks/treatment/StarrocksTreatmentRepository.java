@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
 import org.cbioportal.domain.treatment.repository.TreatmentRepository;
-import org.cbioportal.infrastructure.repository.starrocks.StarrocksStudyViewFilterSupport;
 import org.cbioportal.legacy.model.ClinicalEventSample;
 import org.cbioportal.legacy.model.PatientTreatment;
 import org.cbioportal.legacy.model.SampleTreatment;
@@ -29,20 +28,17 @@ public class StarrocksTreatmentRepository implements TreatmentRepository {
   @Override
   public List<PatientTreatment> getPatientTreatments(
       StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getPatientTreatments(studyViewFilterContext);
   }
 
   @Override
   public int getTotalPatientTreatmentCount(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getPatientTreatmentCounts(studyViewFilterContext);
   }
 
   @Override
   public List<SampleTreatment> getSampleTreatments(
       StudyViewFilterContext studyViewFilterContext, ProjectionType projection) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     Map<String, TreatmentSamples> treatments = new LinkedHashMap<>();
     for (StarrocksSampleTreatmentRow row : mapper.getSampleTreatmentRows(studyViewFilterContext)) {
       TreatmentSamples samples =
@@ -69,7 +65,6 @@ public class StarrocksTreatmentRepository implements TreatmentRepository {
 
   @Override
   public int getTotalSampleTreatmentCount(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return mapper.getTotalSampleTreatmentCounts(studyViewFilterContext);
   }
 

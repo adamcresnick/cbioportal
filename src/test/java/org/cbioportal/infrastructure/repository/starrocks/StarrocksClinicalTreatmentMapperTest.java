@@ -192,7 +192,12 @@ class StarrocksClinicalTreatmentMapperTest {
     assertThat(timeline.getDataOfClinicalEvents(List.of(10001L, 10002L)))
         .extracting(data -> data.getKey() + ":" + data.getValue())
         .containsExactlyInAnyOrder(
-            "SAMPLE_ID:SA1", "AGENT:DrugA", "AGENT:DrugA-duplicate", "STATUS:COMPLETED");
+            "SAMPLE_ID:SA1",
+            "AGENT:DrugA",
+            "AGENT:DrugA-duplicate",
+            "AGENT_CLASS:Chemotherapy",
+            "AGENT_TARGET:TP53, EGFR",
+            "STATUS:COMPLETED");
     assertThat(timeline.getStudyClinicalEvent("sr_study_a", "SUMMARY", 2, 1, "startDate", "ASC"))
         .extracting(ClinicalEvent::getClinicalEventId)
         .containsExactly(10002L, 10003L);

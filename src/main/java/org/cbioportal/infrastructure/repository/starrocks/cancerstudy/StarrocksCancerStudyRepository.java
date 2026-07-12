@@ -5,7 +5,6 @@ import org.cbioportal.domain.cancerstudy.CancerStudyMetadata;
 import org.cbioportal.domain.cancerstudy.ResourceCount;
 import org.cbioportal.domain.cancerstudy.repository.CancerStudyRepository;
 import org.cbioportal.domain.studyview.StudyViewFilterContext;
-import org.cbioportal.infrastructure.repository.starrocks.StarrocksStudyViewFilterSupport;
 import org.cbioportal.shared.SortAndSearchCriteria;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.Cacheable;
@@ -89,7 +88,6 @@ public class StarrocksCancerStudyRepository implements CancerStudyRepository {
       cacheResolver = "staticRepositoryCacheOneResolver",
       condition = "@cacheEnabledConfig.getEnabled()")
   public List<String> getFilteredStudyIds(StudyViewFilterContext studyViewFilterContext) {
-    StarrocksStudyViewFilterSupport.requireImplementedFilterFamilies(studyViewFilterContext);
     return cancerStudyMapper.getFilteredStudyIds(studyViewFilterContext);
   }
 
