@@ -38,6 +38,7 @@ jobs:
         run: mvn -q -Dtest='Starrocks*Test,ColumnstoreBackend*' test
       - name: Schema and mapper inventory freshness
         run: |
+          scripts/test_bootstrap_starrocks.sh
           python3 -m unittest scripts/test_generate_starrocks_schema_inventory.py
           scripts/generate_starrocks_schema_inventory.py --check
           CBIOPORTAL_FRONTEND_ROOT=target/cbioportal-frontend-v7.0.5 \

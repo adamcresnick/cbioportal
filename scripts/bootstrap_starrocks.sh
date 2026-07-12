@@ -41,7 +41,7 @@ if ! command -v "$mysql_client" >/dev/null 2>&1; then
 fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-connection=(--protocol=TCP --host="$host" --port="$port" --user="$user" --default-character-set=utf8mb4)
+connection=(--skip-comments --protocol=TCP --host="$host" --port="$port" --user="$user" --default-character-set=utf8mb4)
 export MYSQL_PWD=$password
 
 "$mysql_client" "${connection[@]}" --execute="CREATE DATABASE IF NOT EXISTS \`$database\`"
