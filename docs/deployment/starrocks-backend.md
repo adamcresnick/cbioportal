@@ -60,12 +60,13 @@ Connection failure, migration mismatch, or any missing table returns HTTP `503` 
 
 ## Production baseline
 
-Use `dev/starrocks/application.production.properties.example` as the application configuration template. Credentials must be supplied by the deployment secret manager. The template requires TLS identity verification, bounded Hikari pool settings, a 30-second statement timeout, and migration-aware readiness.
+Use `dev/starrocks/application.production.properties.example` as the application configuration template. `STARROCKS_HOST`, `STARROCKS_PORT`, and `STARROCKS_DATABASE` are required so a missing deployment value cannot silently select a generic FE port. Credentials must be supplied by the deployment secret manager. The template requires TLS identity verification, bounded Hikari pool settings, a 30-second statement timeout, and migration-aware readiness.
 
 Migration `1` can be established only on a new empty database:
 
 ```bash
 export STARROCKS_HOST=starrocks-fe.example.org
+export STARROCKS_PORT=9030
 export STARROCKS_USER=deployment_admin
 export STARROCKS_PASSWORD='from-secret-manager'
 export STARROCKS_DATABASE=cbioportal
