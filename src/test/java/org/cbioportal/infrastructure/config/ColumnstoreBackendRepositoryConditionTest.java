@@ -31,7 +31,7 @@ import org.cbioportal.legacy.persistence.mybatisclickhouse.StudyViewMyBatisRepos
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
-class ColumnstoreRepositoryConditionTest {
+class ColumnstoreBackendRepositoryConditionTest {
 
   private static final List<Class<?>> CLICKHOUSE_REPOSITORY_TYPES =
       List.of(
