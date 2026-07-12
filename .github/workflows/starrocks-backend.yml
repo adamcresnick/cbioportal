@@ -20,12 +20,28 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: scripts/starrocks-inventory/package-lock.json
+      - uses: actions/checkout@v4
+        with:
+          repository: cBioPortal/cbioportal-frontend
+          ref: 5eab200650ecc2f111b94fea31f56a2f50a6ad22
+          path: target/cbioportal-frontend-v7.0.5
+      - name: Install inventory tooling
+        run: npm ci --prefix scripts/starrocks-inventory --ignore-scripts
       - name: Compile
         run: mvn -q -DskipTests compile
       - name: Unit and real StarRocks tests
         run: mvn -q -Dtest='Starrocks*Test,ColumnstoreBackend*' test
       - name: Schema and mapper inventory freshness
-        run: scripts/generate_starrocks_schema_inventory.py --check
+        run: |
+          python3 -m unittest scripts/test_generate_starrocks_schema_inventory.py
+          scripts/generate_starrocks_schema_inventory.py --check
+          CBIOPORTAL_FRONTEND_ROOT=target/cbioportal-frontend-v7.0.5 \
+            scripts/generate_starrocks_frontend_api_inventory.sh --check
       - name: StarRocks mapper dialect lint
         run: scripts/lint_starrocks_mappers.sh
       - name: Formatting
