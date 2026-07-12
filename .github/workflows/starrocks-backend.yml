@@ -35,7 +35,7 @@ jobs:
       - name: Compile
         run: mvn -q -DskipTests compile
       - name: Unit and real StarRocks tests
-        run: mvn -q -Dtest='Starrocks*Test,ColumnstoreBackend*' test
+        run: mvn -q -Dtest='Starrocks*Test,ColumnstoreBackend*,IndexTemplateContractTest' test
       - name: Schema and mapper inventory freshness
         run: |
           scripts/test_bootstrap_starrocks.sh
@@ -47,3 +47,37 @@ jobs:
         run: scripts/lint_starrocks_mappers.sh
       - name: Formatting
         run: mvn -q spotless:check
+
+  deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dev/starrocks/e2e/package-lock.json
+      - name: Start complete StarRocks deployment
+        run: scripts/starrocks/start_local_stack.sh
+      - name: Deployment release gates
+        run: |
+          scripts/starrocks/run_performance_budget.py http://localhost:8080
+          scripts/starrocks/verify_no_clickhouse_runtime.sh
+          PLAYWRIGHT_INSTALL_DEPS=true scripts/starrocks/run_frontend_e2e.sh
+      - name: Capture deployment logs
+        if: failure()
+        run: |
+          mkdir -p target
+          docker compose -f dev/starrocks/docker-compose.yml logs --no-color > target/starrocks-deployment.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: starrocks-deployment-logs
+          path: |
+            target/starrocks-deployment.log
+            dev/starrocks/e2e/test-results
+          if-no-files-found: ignore
+      - name: Remove deployment containers, volumes, and data
+        if: always()
+        run: scripts/starrocks/stop_local_stack.sh

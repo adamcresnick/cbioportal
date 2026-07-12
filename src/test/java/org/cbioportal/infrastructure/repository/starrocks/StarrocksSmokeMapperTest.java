@@ -120,6 +120,12 @@ class StarrocksSmokeMapperTest {
             .isInstanceOf(StarrocksSampleRepository.class);
         assertThat(context.getBean(TreatmentRepository.class))
             .isInstanceOf(StarrocksTreatmentRepository.class);
+        assertThat(
+                context
+                    .getBean(SqlSessionFactory.class)
+                    .getConfiguration()
+                    .getDefaultStatementTimeout())
+            .isEqualTo(30);
       }
     }
   }

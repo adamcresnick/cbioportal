@@ -49,6 +49,7 @@ public class ApiSecurityConfig {
                         "/api/swagger-resources/**",
                         "/api/swagger-ui.html",
                         "/api/health",
+                        "/api/health/starrocks",
                         "/api/public_virtual_studies/**",
                         "/api/cache/**")
                     .permitAll()

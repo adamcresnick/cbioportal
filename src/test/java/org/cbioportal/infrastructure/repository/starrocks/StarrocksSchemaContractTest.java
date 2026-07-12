@@ -7,9 +7,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.cbioportal.infrastructure.health.StarrocksReadinessService;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 class StarrocksSchemaContractTest {
 
@@ -77,6 +82,30 @@ class StarrocksSchemaContractTest {
                     "generic_assay_type IS NOT NULL AND datatype = 'LIMIT-VALUE'"))
             .isEqualTo(2);
         assertThat(queryCount(statement, "genomic_event_derived", "off_panel = 1")).isEqualTo(1);
+
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        dataSource.setUrl(cluster.jdbcUrl());
+        dataSource.setUsername(cluster.username());
+        dataSource.setPassword(cluster.password());
+        StarrocksReadinessService readinessService = new StarrocksReadinessService(dataSource, "1");
+        assertThat(readinessService.check())
+            .satisfies(
+                readiness -> {
+                  assertThat(readiness.databaseVersion()).as(readiness.toString()).isNotBlank();
+                  assertThat(readiness.backend()).isEqualTo("starrocks");
+                  assertThat(readiness.actualMigration()).isEqualTo("1");
+                  assertThat(readiness.missingTables()).isEmpty();
+                  assertThat(readiness.ready()).as(readiness.toString()).isTrue();
+                });
+
+        statement.execute("DROP TABLE mutation_derived");
+        assertThat(readinessService.check())
+            .satisfies(
+                readiness -> {
+                  assertThat(readiness.ready()).isFalse();
+                  assertThat(readiness.missingTables()).containsExactly("mutation_derived");
+                });
       }
     }
   }
@@ -101,6 +130,24 @@ class StarrocksSchemaContractTest {
               "radiant_",
               "RADIANT_");
     }
+  }
+
+  @Test
+  void readinessTableInventoryMatchesSchemaScripts() throws Exception {
+    Pattern createTable = Pattern.compile("(?m)^CREATE TABLE `?([a-z_]+)`?");
+    List<String> schemaTables = new ArrayList<>();
+    for (String path :
+        List.of("db-scripts/starrocks/schema.sql", "db-scripts/starrocks/derived.sql")) {
+      String sql = new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
+      Matcher matcher = createTable.matcher(sql);
+      while (matcher.find()) {
+        schemaTables.add(matcher.group(1));
+      }
+    }
+
+    assertThat(schemaTables)
+        .doesNotHaveDuplicates()
+        .containsExactlyInAnyOrderElementsOf(StarrocksReadinessService.REQUIRED_TABLES);
   }
 
   @Test
