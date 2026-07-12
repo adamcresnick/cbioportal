@@ -147,6 +147,7 @@ function collectCalls(frontendRoot) {
         );
         const clients = new Map();
         const getters = new Map();
+        const memberClients = new Map();
 
         for (const statement of sourceFile.statements) {
             if (
@@ -194,6 +195,67 @@ function collectCalls(frontendRoot) {
             return null;
         }
 
+        function collectMemberClients(node) {
+            if (
+                ts.isPropertyDeclaration(node) &&
+                node.name &&
+                ts.isIdentifier(node.name)
+            ) {
+                const initializer = node.initializer;
+                if (
+                    initializer &&
+                    ts.isCallExpression(initializer) &&
+                    ts.isIdentifier(initializer.expression) &&
+                    getters.has(initializer.expression.text)
+                ) {
+                    memberClients.set(
+                        node.name.text,
+                        getters.get(initializer.expression.text),
+                    );
+                } else if (kindFromType(node.type)) {
+                    memberClients.set(node.name.text, kindFromType(node.type));
+                }
+            }
+            if (
+                ts.isParameter(node) &&
+                ts.isConstructorDeclaration(node.parent) &&
+                ts.isIdentifier(node.name) &&
+                node.modifiers &&
+                node.modifiers.some((modifier) =>
+                    [
+                        ts.SyntaxKind.PublicKeyword,
+                        ts.SyntaxKind.ProtectedKeyword,
+                        ts.SyntaxKind.PrivateKeyword,
+                        ts.SyntaxKind.ReadonlyKeyword,
+                    ].includes(modifier.kind),
+                ) &&
+                kindFromType(node.type)
+            ) {
+                memberClients.set(node.name.text, kindFromType(node.type));
+            }
+            ts.forEachChild(node, collectMemberClients);
+        }
+        collectMemberClients(sourceFile);
+
+        function kindFromExpression(expression, scopedClients) {
+            if (ts.isIdentifier(expression)) {
+                return scopedClients.get(expression.text) || null;
+            }
+            if (
+                ts.isPropertyAccessExpression(expression) &&
+                expression.expression.kind === ts.SyntaxKind.ThisKeyword
+            ) {
+                return memberClients.get(expression.name.text) || null;
+            }
+            if (
+                ts.isCallExpression(expression) &&
+                ts.isIdentifier(expression.expression)
+            ) {
+                return getters.get(expression.expression.text) || null;
+            }
+            return null;
+        }
+
         function visit(node, inheritedClients) {
             let scopedClients = inheritedClients;
             if (ts.isFunctionLike(node)) {
@@ -237,20 +299,10 @@ function collectCalls(frontendRoot) {
                 ts.isPropertyAccessExpression(node.expression)
             ) {
                 const propertyAccess = node.expression;
-                let kind = null;
-                if (ts.isIdentifier(propertyAccess.expression)) {
-                    kind =
-                        scopedClients.get(propertyAccess.expression.text) ||
-                        null;
-                } else if (
-                    ts.isCallExpression(propertyAccess.expression) &&
-                    ts.isIdentifier(propertyAccess.expression.expression)
-                ) {
-                    kind =
-                        getters.get(
-                            propertyAccess.expression.expression.text,
-                        ) || null;
-                }
+                const kind = kindFromExpression(
+                    propertyAccess.expression,
+                    scopedClients,
+                );
                 if (kind && !NON_API_METHODS.has(propertyAccess.name.text)) {
                     const location = sourceFile.getLineAndCharacterOfPosition(
                         node.getStart(sourceFile),
