@@ -20,7 +20,8 @@ INSERT INTO genetic_entity VALUES
   (2, 'GENE', 'EGFR'),
   (3, 'GENE', 'BRAF'),
   (1001, 'GENERIC_ASSAY', 'GA_NUMERIC'),
-  (1002, 'GENERIC_ASSAY', 'GA_CATEGORY');
+  (1002, 'GENERIC_ASSAY', 'GA_CATEGORY'),
+  (1101, 'GENESET', 'HALLMARK_FIXTURE');
 
 INSERT INTO gene VALUES
   (7157, 'TP53', 1, 'protein-coding'),
@@ -36,6 +37,20 @@ INSERT INTO reference_genome_gene VALUES
   (7157, 1, '17', '17p13.1', 7668402, 7687550),
   (1956, 1, '7', '7p11.2', 55019017, 55211628),
   (673, 1, '7', '7q34', 140719327, 140924929);
+
+INSERT INTO geneset VALUES
+  (1, 1101, 'HALLMARK_FIXTURE', 'Fixture hallmark', 'Deterministic geneset fixture', 'https://example.org/geneset');
+
+INSERT INTO geneset_gene VALUES
+  (1, 7157), (1, 1956);
+
+INSERT INTO geneset_hierarchy_node VALUES
+  (1, 'Fixture root', NULL),
+  (2, 'Fixture child', 1),
+  (3, 'Fixture empty branch', 1);
+
+INSERT INTO geneset_hierarchy_leaf VALUES
+  (2, 1);
 
 INSERT INTO cancer_study VALUES
   (1, 'sr_study_a', 'sr_a', 'StarRocks Study A', 'Deterministic fixture study A', 1, NULL, NULL, 'fixture', 0, '2026-07-11 00:00:00', 1),
@@ -100,6 +115,9 @@ INSERT INTO genetic_profile_samples VALUES
   (105, '1001,1002,1003,1004'), (106, '1001,1002,1003,1004'),
   (201, '2001,2002,2003,2004'), (202, '2001,2002,2003,2004'), (203, '2001,2002,2003,2004'),
   (205, '2001,2002,2003,2004'), (206, '2001,2002,2003,2004');
+
+INSERT INTO genetic_profile_link VALUES
+  (103, 102, 'CNA_REFERENCE');
 
 INSERT INTO sample_profile VALUES
   (1001,101,1),(1002,101,1),(1003,101,NULL),(1004,101,1),
@@ -185,7 +203,21 @@ INSERT INTO genetic_alteration VALUES
   (105,1001,'0.1,0.5,0.9,NA'),(106,1002,'LOW,HIGH,LOW,NA'),
   (202,1,'0,1,2,-1'),(202,3,'1,0,-2,2'),
   (203,1,'2.0,1.0,3.0,4.0'),(203,3,'0.2,0.4,0.6,0.8'),
-  (205,1001,'0.3,0.6,0.2,0.7'),(206,1002,'HIGH,LOW,HIGH,LOW');
+  (205,1001,'0.3,0.6,0.2,0.7'),(206,1002,'HIGH,LOW,HIGH,LOW'),
+  (103,1101,'1.0,2.0,3.0,4.0');
+
+INSERT INTO gistic VALUES
+  (1,1,17,'17p13.1',7000000,8000000,0.001,1);
+
+INSERT INTO gistic_to_gene VALUES
+  (1,7157);
+
+INSERT INTO mut_sig VALUES
+  (1,7157,1,1000,2,0.001,0.01);
+
+INSERT INTO mutation_count_by_keyword VALUES
+  (101,'TP53 R175',7157,1,2),
+  (101,NULL,1956,1,1);
 
 INSERT INTO structural_variant
   (internal_id,genetic_profile_id,sample_id,site1_entrez_gene_id,site1_chromosome,site1_position,site2_entrez_gene_id,site2_chromosome,site2_position,event_info,sv_status,annotation_json)

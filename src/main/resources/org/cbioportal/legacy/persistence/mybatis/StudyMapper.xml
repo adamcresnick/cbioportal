@@ -52,7 +52,7 @@
             <!-- ROB : this may be a difficult thing to resolve, possibly add to GROUP BY to get aroudn it -->
             INNER JOIN sample_list_list ON sample_list.list_id = sample_list_list.list_id
             INNER JOIN reference_genome ON cancer_study.reference_genome_id = reference_genome.reference_genome_id
-        <if test="projection == 'DETAILED' or keyword != null">
+        <if test="projection == 'DETAILED' or (_parameter.containsKey('keyword') and keyword != null)">
             INNER JOIN type_of_cancer ON cancer_study.type_of_cancer_id = type_of_cancer.type_of_cancer_id
             LEFT JOIN
             (

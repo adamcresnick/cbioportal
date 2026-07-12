@@ -136,7 +136,7 @@
         <include refid="select">
             <property name="prefix" value=""/>
         </include>
-        FROM sample
+        <include refid="from"/>
         WHERE sample.internal_id = #{internalId}
     </select>
 

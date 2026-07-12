@@ -26,6 +26,8 @@ public interface SampleMapper {
 
   Sample getSample(String studyId, String sampleId, String projection);
 
+  Sample getSampleByInternalId(Integer internalId, String projection);
+
   List<Sample> getSamplesByInternalIds(List<Integer> internalIds, String projection);
 
   List<Sample> getSamplesOfPatients(String studyId, List<String> patientIds, String projection);
